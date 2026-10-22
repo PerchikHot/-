@@ -202,9 +202,7 @@ class MainActivity : Activity() {
     }
     private fun reveal() {
         screen("Открытие изображения")
-        val images=getSharedPreferences("gallery",MODE_PRIVATE).getString("uris","")!!
-            .split("
-").filter { it.isNotBlank() }
+        val images=collectionImages()
         if(images.isEmpty()) {
             label("Сначала добавь изображения через Галерею.")
             add("Перейти в галерею") { gallery() }
