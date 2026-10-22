@@ -484,6 +484,7 @@ class MainActivity : Activity() {
                         tile.isEnabled=false
                         if(index in stars) foundStars.add(index)
                         tile.text=if(index in stars) "★" else "·"
+                        Toast.makeText(this,if(index in stars) "★ Звезда найдена! ${foundStars.size}/3" else "Пусто • Осталось ${9-moves-1} попыток",Toast.LENGTH_SHORT).show()
                         tile.animate().alpha(0f).scaleX(.8f).scaleY(.8f).setDuration(200).withEndAction {tile.visibility=View.INVISIBLE}.start()
                         moves++
                         remaining--
