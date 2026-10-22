@@ -51,8 +51,10 @@ object ImageLibrary {
             ctx.getSharedPreferences("folders",Context.MODE_PRIVATE).getString("folder_$it",null)
         }
         val sources=mutableListOf<()->Uri?>()
-        if(imported(ctx).isNotEmpty()) sources.add {
-            imported(ctx).randomOrNull()?.let {Uri.fromFile(it)}
+        val shop=ctx.getSharedPreferences("unlock_shop",Context.MODE_PRIVATE)
+        val available=imported(ctx).filterIndexed {index,_ -> index==0 || shop.getBoolean("image_$index",false)}
+        if(available.isNotEmpty()) sources.add {
+            available.randomOrNull()?.let {Uri.fromFile(it)}
         }
         folders.forEach { folder -> sources.add {randomFromTree(ctx,Uri.parse(folder))} }
         for(source in sources) {
