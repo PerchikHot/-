@@ -11,6 +11,7 @@ import kotlin.random.Random
 class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var score = 0
+    private var journeyAwarded = false
     private val bg = Color.rgb(9, 17, 39)
     private val blue = Color.rgb(41, 101, 201)
     private val symbols = listOf("★","◆","♥","☀","♣","✿")
@@ -67,7 +68,12 @@ class MainActivity : Activity() {
     private fun add(s:String, action:()->Unit) { root.addView(button(s,action)) }
     private fun award(points:Int=10) {
         score+=points
-        getSharedPreferences("progress",MODE_PRIVATE).edit().putInt("wins",getSharedPreferences("progress",MODE_PRIVATE).getInt("wins",0)+1).apply()
+        if(intent.getBooleanExtra("journey",false) && !journeyAwarded) {
+            journeyAwarded=true
+            val progress=getSharedPreferences("progress",MODE_PRIVATE)
+            progress.edit().putInt("wins",progress.getInt("wins",0)+1).apply()
+            Toast.makeText(this,"Уровень пройден!",Toast.LENGTH_LONG).show()
+        }
         getPreferences(MODE_PRIVATE).edit().putInt("score",score).apply()
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
