@@ -487,9 +487,9 @@ class MainActivity : Activity() {
                         tile.animate().alpha(0f).scaleX(.8f).scaleY(.8f).setDuration(200).withEndAction {tile.visibility=View.INVISIBLE}.start()
                         moves++
                         remaining--
-                        if(remaining==0) {
-                            award(if(moves<=16) 25 else 10)
-                            label("Изображение открыто!")
+                        if(foundStars.size==3) {
+                            award(30+(9-moves)*5)
+                            label("Три звезды найдены! Изображение открыто!")
                             getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
                         }
                     }
