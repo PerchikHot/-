@@ -10,7 +10,7 @@ import kotlin.random.Random
 
 object ImageLibrary {
     private fun store(ctx:Context)=File(ctx.filesDir,"imported_images")
-    fun imported(ctx:Context):List<File> = store(ctx).listFiles()?.filter { it.isFile && it.length()>0 } ?: emptyList()
+    fun imported(ctx:Context):List<File> = store(ctx).listFiles()?.filter { it.isFile && it.length()>0 }?.sortedBy { it.name } ?: emptyList()
 
     fun importZip(ctx:Context,uri:Uri):Int {
         val directory=store(ctx)
