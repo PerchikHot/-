@@ -82,7 +82,7 @@ class MenuActivity:Activity() {
         changeBackground()
     }
     private fun overlay():LinearLayout {
-        val scroll=ScrollView(this).apply {fillViewport=true}
+        val scroll=ScrollView(this).apply {isFillViewport=true}
         frame.addView(scroll,FrameLayout.LayoutParams(-1,-1))
         return LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
