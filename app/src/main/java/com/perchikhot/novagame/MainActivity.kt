@@ -330,6 +330,12 @@ class MainActivity : Activity() {
         val maxMoves=if(arcade) 12 else Int.MAX_VALUE
         val status=TextView(this).apply {text=if(arcade) "АРКАДА • 12 ходов • Цель: 35" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
+        val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=35
+            progress=0
+            progressTintList=android.content.res.ColorStateList.valueOf(0xFFB86DFF.toInt())
+        }
+        root.addView(progress,LinearLayout.LayoutParams(-1,dp(12)).apply {bottomMargin=dp(12)})
         lateinit var buttons:List<Button>
         fun matches():Set<Int> {
             val found=mutableSetOf<Int>()
@@ -377,6 +383,7 @@ class MainActivity : Activity() {
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f;it.scaleX=1f;it.scaleY=1f}
                 cleared+=found.size
+                progress.progress=minOf(35,cleared)
                 if(cleared>=35 && !completed) {
                     completed=true
                     status.text="ПОБЕДА! Собрано $cleared элементов"
