@@ -58,5 +58,5 @@ class GalleryActivity : Activity() {
         save(items);draw()
     }
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed(){draw()}
+    override fun onBackPressed(){super.onBackPressed()}
 }
