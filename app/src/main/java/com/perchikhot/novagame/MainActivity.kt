@@ -323,6 +323,7 @@ class MainActivity : Activity() {
         var selected=-1
         var busy=false
         var moves=0
+        var chain=0
         var cleared=0
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
@@ -358,6 +359,7 @@ class MainActivity : Activity() {
         fun settle() {
             val found=matches()
             if(found.isEmpty()) {
+                chain=0
                 busy=false
                 render()
                 if(arcade && moves>=maxMoves && !completed) {
@@ -366,6 +368,7 @@ class MainActivity : Activity() {
                 }
                 return
             }
+            chain++
             found.forEach {buttons[it].text="✨";buttons[it].animate().alpha(.15f).setDuration(220).start()}
             buttons[0].postDelayed({
                 gravityFill(found)
@@ -376,7 +379,7 @@ class MainActivity : Activity() {
                     status.text="ПОБЕДА! Собрано $cleared элементов"
                     award(if(arcade) 75 else 40)
                 }
-                status.text="Ходы: $moves / ${if(arcade) 12 else "∞"} • Собрано: $cleared / 35"
+                status.text="Ходы: $moves / ${if(arcade) 12 else "∞"} • Собрано: $cleared / 35 • КОМБО x$chain"
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
