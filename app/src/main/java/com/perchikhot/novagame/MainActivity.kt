@@ -321,6 +321,8 @@ class MainActivity : Activity() {
         var moves=0
         var cleared=0
         var completed=false
+        val arcade=intent.getStringExtra("prototype")=="arcade"
+        val maxMoves=if(arcade) 12 else Int.MAX_VALUE
         val status=TextView(this).apply {text="Ходы: 0 • Собери первую комбинацию";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
         lateinit var buttons:List<Button>
@@ -357,14 +359,14 @@ class MainActivity : Activity() {
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f}
                 cleared+=found.size
-                if(cleared>=35 && !completed) {completed=true;award(40)}
-                status.text="Ходы: $moves • Собрано: $cleared / 35"
+                if(cleared>=35 && !completed) {completed=true;award(if(arcade) 75 else 40)}
+                status.text="Ходы: $moves / ${if(arcade) 12 else "∞"} • Собрано: $cleared / 35"
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
         }
         buttons=grid(6,36) {i,_ ->
-            if(!busy && !completed) {
+            if(!busy && !completed && moves<maxMoves) {
                 if(selected<0) {selected=i;render()}
                 else {
                     val previous=selected;selected=-1
