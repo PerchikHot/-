@@ -328,6 +328,7 @@ class MainActivity : Activity() {
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
         val maxMoves=if(arcade) 12 else Int.MAX_VALUE
+        val blocked=if(arcade) setOf(7,28) else emptySet<Int>()
         val status=TextView(this).apply {text=if(arcade) "АРКАДА • 12 ходов • Цель: 35" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
         val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
@@ -341,14 +342,15 @@ class MainActivity : Activity() {
             val found=mutableSetOf<Int>()
             for(row in 0..5) for(col in 0..5) {
                 val i=row*6+col
-                if(col<4 && tiles[i]==tiles[i+1] && tiles[i]==tiles[i+2]) found.addAll(listOf(i,i+1,i+2))
-                if(row<4 && tiles[i]==tiles[i+6] && tiles[i]==tiles[i+12]) found.addAll(listOf(i,i+6,i+12))
+                if(col<4 && i !in blocked && i+1 !in blocked && i+2 !in blocked && tiles[i]==tiles[i+1] && tiles[i]==tiles[i+2]) found.addAll(listOf(i,i+1,i+2))
+                if(row<4 && i !in blocked && i+6 !in blocked && i+12 !in blocked && tiles[i]==tiles[i+6] && tiles[i]==tiles[i+12]) found.addAll(listOf(i,i+6,i+12))
             }
             return found
         }
         fun render() {
             buttons.forEachIndexed { i,b ->
-                b.text=icons[tiles[i]]
+                b.text=if(i in blocked) "✕" else icons[tiles[i]]
+                b.isEnabled=i !in blocked
                 b.alpha=if(i==selected) .6f else 1f
                 b.background=panel(if(i==selected) 0xF08D52B6.toInt() else 0xD0252A5A.toInt(),12)
             }
@@ -395,7 +397,7 @@ class MainActivity : Activity() {
             },260)
         }
         buttons=grid(6,36) {i,_ ->
-            if(!busy && !completed && moves<maxMoves) {
+            if(i !in blocked && !busy && !completed && moves<maxMoves) {
                 if(selected<0) {selected=i;render()}
                 else {
                     val previous=selected;selected=-1
