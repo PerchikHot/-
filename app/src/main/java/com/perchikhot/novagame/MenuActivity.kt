@@ -19,6 +19,7 @@ class MenuActivity:Activity() {
     private lateinit var background:ImageView
     private var screenName="start"
     private var pictureIndex=0
+    private var imageRequest=0
     private val prefs by lazy {getSharedPreferences("unlock_shop",MODE_PRIVATE)}
     private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
     private val cycle=object:Runnable {
@@ -56,10 +57,11 @@ class MenuActivity:Activity() {
         }
         pictureIndex=(pictureIndex+1)%files.size
         val target=files[pictureIndex]
+        val request=++imageRequest
         Thread {
             val bitmap=BitmapFactory.decodeFile(target.absolutePath,BitmapFactory.Options().apply {inSampleSize=1})
             runOnUiThread {
-                if(!isFinishing && ::background.isInitialized && bitmap!=null) {
+                if(!isFinishing && request==imageRequest && ::background.isInitialized && bitmap!=null) {
                     background.animate().alpha(0.25f).setDuration(280).withEndAction {
                         background.setImageBitmap(bitmap)
                         background.animate().alpha(1f).setDuration(700).start()
@@ -70,6 +72,7 @@ class MenuActivity:Activity() {
     }
     private fun setup(name:String) {
         screenName=name
+        imageRequest++
         frame=FrameLayout(this)
         frame.setBackgroundColor(Color.rgb(10,12,36))
         background=ImageView(this).apply {scaleType=ImageView.ScaleType.CENTER_CROP}
