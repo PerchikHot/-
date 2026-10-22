@@ -176,7 +176,7 @@ class MainActivity : Activity() {
     private fun reveal() {
         screen("Открытие изображения")
         val images=getSharedPreferences("gallery",MODE_PRIVATE).getString("uris","")!!
-            .split("\\n").filter { it.isNotBlank() }
+            .split("\n").filter { it.isNotBlank() }
         if(images.isEmpty()) {
             label("Сначала добавь изображения через Галерею.")
             add("Перейти в галерею") { gallery() }
