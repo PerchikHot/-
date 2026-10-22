@@ -127,11 +127,7 @@ class MenuActivity:Activity() {
         text(col,"ТВОЯ КОЛЛЕКЦИЯ • ТВОИ ИСТОРИИ",14)
         col.addView(View(this),LinearLayout.LayoutParams(1,dp(45)))
         action(col,"▶  ИГРАТЬ") {
-            frame.animate().alpha(0f).translationX(-dp(45).toFloat()).setDuration(340).withEndAction {
-                showModes()
-                frame.alpha=.72f;frame.translationX=dp(18).toFloat()
-                frame.animate().alpha(1f).translationX(0f).setDuration(220).start()
-            }.start()
+            showModes()
         }
         action(col,"✦  МАГАЗИН ПЕРСОНАЖЕЙ") {showShop()}
         action(col,"⚙  КОЛЛЕКЦИИ") {startActivity(Intent(this,FolderSettingsActivity::class.java))}
