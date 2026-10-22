@@ -469,7 +469,9 @@ class MainActivity : Activity() {
                 frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
                 var remaining=16
                 var moves=0
-                label("Задача: открой все плитки. Чем меньше ходов, тем больше награда!",15)
+                label("Найди 3 звезды под плитками за 9 попыток!",15)
+                val stars=(0 until 16).shuffled().take(3).toSet()
+                val foundStars=mutableSetOf<Int>()
                 repeat(16) { index ->
                     val tile=button("",{}).apply {background=panel(if((index/4+index%4)%2==0) 0xE03C3167.toInt() else 0xE023254F.toInt(),5)}
                     val params=android.widget.GridLayout.LayoutParams(
