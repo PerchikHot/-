@@ -369,10 +369,13 @@ class MainActivity : Activity() {
                 return
             }
             chain++
-            found.forEach {buttons[it].text="✨";buttons[it].animate().alpha(.15f).setDuration(220).start()}
+            found.forEach { i ->
+                buttons[i].text="✦"
+                buttons[i].animate().scaleX(1.22f).scaleY(1.22f).alpha(.2f).setDuration(220).start()
+            }
             buttons[0].postDelayed({
                 gravityFill(found)
-                buttons.forEach {it.alpha=1f}
+                buttons.forEach {it.alpha=1f;it.scaleX=1f;it.scaleY=1f}
                 cleared+=found.size
                 if(cleared>=35 && !completed) {
                     completed=true
