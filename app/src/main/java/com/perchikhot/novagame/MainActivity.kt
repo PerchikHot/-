@@ -315,10 +315,12 @@ class MainActivity : Activity() {
         screen("Три в ряд")
         label("Выбери камень, затем соседний. Три одинаковых по горизонтали или вертикали исчезнут. Новые упадут сверху.",15)
         val tiles=MutableList(36){Random.nextInt(5)}
-        val icons=listOf("🔮","💠","🌙","🦋","💎")
+        val icons=listOf("◆","✦","●","⬟","✿")
         var selected=-1
         var busy=false
         var moves=0
+        var cleared=0
+        var completed=false
         val status=TextView(this).apply {text="Ходы: 0 • Собери первую комбинацию";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
         lateinit var buttons:List<Button>
@@ -354,14 +356,15 @@ class MainActivity : Activity() {
             buttons[0].postDelayed({
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f}
-                award(found.size*2)
-                status.text="Ходы: $moves • Убрано: ${found.size} камней!"
+                cleared+=found.size
+                if(cleared>=35 && !completed) {completed=true;award(40)}
+                status.text="Ходы: $moves • Собрано: $cleared / 35"
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
         }
         buttons=grid(6,36) {i,_ ->
-            if(!busy) {
+            if(!busy && !completed) {
                 if(selected<0) {selected=i;render()}
                 else {
                     val previous=selected;selected=-1
