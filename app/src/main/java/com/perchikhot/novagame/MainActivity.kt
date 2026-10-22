@@ -380,9 +380,9 @@ class MainActivity : Activity() {
                 chain=0
                 busy=false
                 render()
-                if(arcade && moves>=maxMoves && !completed) {
+                if(arcade && moves>=maxMoves && !completed && root.findViewWithTag<View>("arcade_retry")==null) {
                     status.text="ПОРАЖЕНИЕ • Собрано $cleared из $goal"
-                    root.addView(button("↻ ЕЩЁ ПОПЫТКА") {match3()})
+                    root.addView(button("↻ ЕЩЁ ПОПЫТКА") {match3()}.apply {tag="arcade_retry"})
                 }
                 return
             }
@@ -401,7 +401,7 @@ class MainActivity : Activity() {
                     status.text="ПОБЕДА! Собрано $cleared элементов"
                     award(if(arcade) 75 else 40)
                 }
-                status.text="Ходы: $moves / ${if(arcade) maxMoves else "∞"} • Собрано: $cleared / $goal • КОМБО x$chain"
+                if(!completed) status.text="Ходы: $moves / ${if(arcade) maxMoves else "∞"} • Собрано: $cleared / $goal • КОМБО x$chain"
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
