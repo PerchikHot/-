@@ -55,7 +55,7 @@ object ImageLibrary {
             imported(ctx).randomOrNull()?.let {Uri.fromFile(it)}
         }
         folders.forEach { folder -> sources.add {randomFromTree(ctx,Uri.parse(folder))} }
-        for(source in sources.shuffled()) {
+        for(source in sources) {
             val uri=try {source()} catch (_:Exception) {null}
             if(uri!=null) return uri
         }
