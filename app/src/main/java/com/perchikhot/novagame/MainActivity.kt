@@ -17,7 +17,12 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         score = getPreferences(MODE_PRIVATE).getInt("score",0)
-        if ((1..2).any { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {\n            startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))\n        }\n        home()\n    }\n    private fun screen(title: String) {
+        if ((1..2).any { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {
+            startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))
+        }
+        home()
+    }
+    private fun screen(title: String) {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 30, 24, 16)
@@ -56,7 +61,8 @@ class MainActivity : Activity() {
         add("💎 Три в ряд") { match3() }
         add("🔎 Найди отличия") { differences() }
         add("✨ Открыть плитки") { reveal() }
-        add("🖼 Галерея") { gallery() }\n        add("📁 Папки коллекций") { startActivity(android.content.Intent(this, FolderSettingsActivity::class.java)) }
+        add("🖼 Галерея") { gallery() }
+        add("📁 Папки коллекций") { startActivity(android.content.Intent(this, FolderSettingsActivity::class.java)) }
     }
     private fun grid(cols:Int, cells:Int, onCell:(Int,Button)->Unit):List<Button> {
         val buttons=mutableListOf<Button>()
@@ -197,7 +203,8 @@ class MainActivity : Activity() {
     private fun reveal() {
         screen("Открытие изображения")
         val images=getSharedPreferences("gallery",MODE_PRIVATE).getString("uris","")!!
-            .split("\n").filter { it.isNotBlank() }
+            .split("
+").filter { it.isNotBlank() }
         if(images.isEmpty()) {
             label("Сначала добавь изображения через Галерею.")
             add("Перейти в галерею") { gallery() }
