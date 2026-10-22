@@ -150,10 +150,19 @@ class MenuActivity:Activity() {
             Triple("ОТКРОЙ ИЗОБРАЖЕНИЕ","reveal","Раскрой картинку")
         )
         text(col,"Пройдено заданий: $wins  •  Очки открывают новые фото",16)
-        val level=wins%games.size
-        val game=games[level]
-        action(col,"▶ УРОВЕНЬ ${wins+1}: ${game.first}",game.third) {
-            startActivity(Intent(this,MainActivity::class.java).putExtra("mode",game.second).putExtra("journey",true))
+        text(col,"КАРТА ПРИКЛЮЧЕНИЯ",18)
+        for(index in 0 until minOf(15,wins+5)) {
+            val game=games[index%games.size]
+            val available=index<=wins
+            val completed=index<wins
+            val icon=if(completed) "✓" else if(available) "▶" else "🔒"
+            val title="$icon  ${index+1}. ${game.first}"
+            val subtitle=if(completed) "Пройдено • + награда" else if(available) game.third else "Откроется после предыдущего уровня"
+            action(col,title,subtitle) {
+                if(available && !completed) {
+                    startActivity(Intent(this,MainActivity::class.java).putExtra("mode",game.second).putExtra("journey",true))
+                } else if(!available) Toast.makeText(this,"Сначала пройди уровень ${wins+1}",Toast.LENGTH_SHORT).show()
+            }
         }
         action(col,"★ МАГАЗИН НАГРАД","Обменяй очки на изображения") {showShop()}
         action(col,"← НАЗАД") {showStart()}
