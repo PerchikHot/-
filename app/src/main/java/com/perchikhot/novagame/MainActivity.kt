@@ -200,6 +200,8 @@ class MainActivity : Activity() {
         val opened=mutableSetOf<Int>()
         var first=-1
         var locked=false
+        var mistakes=0
+        val tactical=intent.getStringExtra("prototype")=="tactics"
         lateinit var buttons:List<Button>
         fun show(i:Int) {
             buttons[i].text=""
@@ -218,10 +220,12 @@ class MainActivity : Activity() {
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
                         if(opened.size==values.size) {
-                            award(30)
+                            award(if(tactical) maxOf(10,60-mistakes*5) else 30)
                             label("Все пары найдены! +30 очков")
                         }
                     } else {
+                        mistakes++
+                        if(tactical) Toast.makeText(this,"Ошибки: $mistakes • Бонус уменьшается",Toast.LENGTH_SHORT).show()
                         locked=true
                         buttons[i].postDelayed({
                             if(!isFinishing) {hide(prev);hide(i)}
