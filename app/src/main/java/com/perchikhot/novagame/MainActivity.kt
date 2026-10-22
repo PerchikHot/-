@@ -195,33 +195,83 @@ class MainActivity : Activity() {
     }
     private fun match3() {
         screen("Три в ряд")
-        label("Нажми две соседние клетки, чтобы поменять их местами и собрать три одинаковых.")
-        val tiles=MutableList(36){Random.nextInt(4)}
-        val icons=listOf("💎","⭐","🔷","💜")
+        label("Выбери камень, затем соседний. Три одинаковых по горизонтали или вертикали исчезнут. Новые упадут сверху.",15)
+        val tiles=MutableList(36){Random.nextInt(5)}
+        val icons=listOf("💎","⭐","💜","🔷","🌸")
         var selected=-1
+        var busy=false
         var moves=0
+        val status=TextView(this).apply {text="Ходы: 0 • Собери первую комбинацию";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
+        root.addView(status)
         lateinit var buttons:List<Button>
-        fun render(){buttons.forEachIndexed{i,b->b.text=icons[tiles[i]]}}
-        fun clearMatches():Int {
-            val matches=mutableSetOf<Int>()
-            for(i in 0..35) {
-                if(i%6<=3 && tiles[i]==tiles[i+1] && tiles[i]==tiles[i+2]) matches.addAll(listOf(i,i+1,i+2))
-                if(i/6<=3 && tiles[i]==tiles[i+6] && tiles[i]==tiles[i+12]) matches.addAll(listOf(i,i+6,i+12))
+        fun matches():Set<Int> {
+            val found=mutableSetOf<Int>()
+            for(row in 0..5) for(col in 0..5) {
+                val i=row*6+col
+                if(col<4 && tiles[i]==tiles[i+1] && tiles[i]==tiles[i+2]) found.addAll(listOf(i,i+1,i+2))
+                if(row<4 && tiles[i]==tiles[i+6] && tiles[i]==tiles[i+12]) found.addAll(listOf(i,i+6,i+12))
             }
-            matches.forEach{tiles[it]=Random.nextInt(4)}
-            return matches.size
+            return found
         }
-        buttons=grid(6,36){i,_->
-            if(selected<0) selected=i else {
-                val j=selected;selected=-1
-                if((i/6==j/6 && kotlin.math.abs(i-j)==1)||kotlin.math.abs(i-j)==6){
-                    val t=tiles[i];tiles[i]=tiles[j];tiles[j]=t
-                    val removed=clearMatches()
-                    if(removed>0) award(removed*2)
-                    moves++
-                    render()
+        fun render() {
+            buttons.forEachIndexed { i,b ->
+                b.text=icons[tiles[i]]
+                b.alpha=if(i==selected) .6f else 1f
+                b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    if(i==selected) Color.rgb(150,84,216) else blue
+                ))
+            }
+        }
+        fun gravityFill(found:Set<Int>) {
+            for(col in 0..5) {
+                val remaining=(5 downTo 0).map {tiles[it*6+col]}.filterIndexed { index,_ -> (5-index)*6+col !in found }
+                for(row in 5 downTo 0) {
+                    val fromBottom=5-row
+                    tiles[row*6+col]=if(fromBottom<remaining.size) remaining[fromBottom] else Random.nextInt(5)
                 }
             }
+        }
+        fun settle() {
+            val found=matches()
+            if(found.isEmpty()) {busy=false;render();return}
+            found.forEach {buttons[it].text="✨";buttons[it].animate().alpha(.15f).setDuration(220).start()}
+            buttons[0].postDelayed({
+                gravityFill(found)
+                buttons.forEach {it.alpha=1f}
+                award(found.size*2)
+                status.text="Ходы: $moves • Убрано: ${found.size} камней!"
+                render()
+                buttons[0].postDelayed({settle()},220)
+            },260)
+        }
+        buttons=grid(6,36) {i,_ ->
+            if(!busy) {
+                if(selected<0) {selected=i;render()}
+                else {
+                    val previous=selected;selected=-1
+                    if(previous==i) render()
+                    else if((previous/6==i/6 && kotlin.math.abs(previous-i)==1)||kotlin.math.abs(previous-i)==6) {
+                        val t=tiles[i];tiles[i]=tiles[previous];tiles[previous]=t
+                        if(matches().isEmpty()) {
+                            tiles[previous]=tiles[i];tiles[i]=t
+                            status.text="Нет комбинации — попробуй другой ход"
+                            render()
+                        } else {
+                            moves++
+                            busy=true
+                            status.text="Ходы: $moves • Комбинация!"
+                            render()
+                            settle()
+                        }
+                    } else {selected=i;render()}
+                }
+            }
+        }
+        // Start without pre-existing matches, so the first move is understandable.
+        repeat(100) {
+            val found=matches()
+            if(found.isEmpty()) return@repeat
+            found.forEach {tiles[it]=Random.nextInt(5)}
         }
         render()
         back()
