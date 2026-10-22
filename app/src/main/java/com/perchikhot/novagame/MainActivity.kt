@@ -169,28 +169,57 @@ class MainActivity : Activity() {
         return buttons
     }
     private fun memory() {
-        screen("Память")
-        label("Найди 6 одинаковых пар")
-        val values=(symbols+symbols).shuffled()
+        screen("ПАМЯТЬ • ФОТО-КАРТОЧКИ")
+        label("Открывай по две карточки и находи одинаковые изображения.",15)
+        val imported=ImageLibrary.imported(this)
+        val shop=getSharedPreferences("unlock_shop",MODE_PRIVATE)
+        val allowed=imported.filterIndexed {i,_ -> i==0 || shop.getBoolean("image_$i",false)}
+        if(allowed.size<2) {
+            label("Для фото-пар открой хотя бы 2 изображения в магазине.",17)
+            back()
+            return
+        }
+        val chosen=allowed.shuffled().take(minOf(6,allowed.size))
+        val values=(chosen.indices.toList()+chosen.indices.toList()).shuffled()
+        val thumbs=chosen.map {file ->
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath,
+                android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
+        }
         val opened=mutableSetOf<Int>()
         var first=-1
         var locked=false
         lateinit var buttons:List<Button>
-        buttons=grid(3,12) { i,b ->
+        fun show(i:Int) {
+            buttons[i].text=""
+            buttons[i].background=android.graphics.drawable.BitmapDrawable(resources,thumbs[values[i]])
+        }
+        fun hide(i:Int) {
+            buttons[i].text="✧"
+            buttons[i].background=panel(0xD032285B.toInt(),14)
+        }
+        buttons=grid(3,values.size) {i,_ ->
             if(!locked && i !in opened && i!=first) {
-                b.text=values[i]
+                show(i)
                 if(first<0) first=i else {
-                    val prev=first; first=-1
+                    val prev=first
+                    first=-1
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
-                        if(opened.size==12) { award(); label("Победа! Все пары найдены.") }
+                        if(opened.size==values.size) {
+                            award(30)
+                            label("Все пары найдены! +30 очков")
+                        }
                     } else {
                         locked=true
-                        b.postDelayed({buttons[prev].text="?";buttons[i].text="?";locked=false},750)
+                        buttons[i].postDelayed({
+                            if(!isFinishing) {hide(prev);hide(i)}
+                            locked=false
+                        },850)
                     }
                 }
             }
         }
+        buttons.forEachIndexed {i,_->hide(i)}
         back()
     }
     private fun puzzle() {
