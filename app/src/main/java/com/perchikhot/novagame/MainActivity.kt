@@ -174,14 +174,45 @@ class MainActivity : Activity() {
         back()
     }
     private fun reveal() {
-        screen("Открытие плиток")
-        label("Убери все 16 плиток, чтобы открыть секретный фон.")
-        val seen=mutableSetOf<Int>()
-        grid(4,16){i,b->
-            if(seen.add(i)) {
-                b.text="✦"
-                b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(24,46,80)))
-                if(seen.size==16){award();label("Фон открыт!")}
+        screen("Открытие изображения")
+        val images=getSharedPreferences("gallery",MODE_PRIVATE).getString("uris","")!!
+            .split("\\n").filter { it.isNotBlank() }
+        if(images.isEmpty()) {
+            label("Сначала добавь изображения через Галерею.")
+            add("Перейти в галерею") { gallery() }
+            back()
+            return
+        }
+        val index=Random.nextInt(images.size)
+        val uri=android.net.Uri.parse(images[index])
+        label("Открывай плитки. После 16 нажатий изображение появится целиком.")
+        val frame=android.widget.FrameLayout(this)
+        root.addView(frame,LinearLayout.LayoutParams(-1,850))
+        val picture=ImageView(this).apply {
+            scaleType=ImageView.ScaleType.FIT_CENTER
+            try {setImageURI(uri)} catch (_:Exception) { }
+        }
+        frame.addView(picture,android.widget.FrameLayout.LayoutParams(-1,-1))
+        val cover=android.widget.GridLayout(this).apply {
+            columnCount=4;rowCount=4
+        }
+        frame.addView(cover,android.widget.FrameLayout.LayoutParams(-1,-1))
+        var remaining=16
+        repeat(16) {
+            val tile=button("✦",{})
+            val params=android.widget.GridLayout.LayoutParams(
+                android.widget.GridLayout.spec(it/4,1f),
+                android.widget.GridLayout.spec(it%4,1f)
+            ).apply {width=0;height=0;setMargins(1,1,1,1)}
+            cover.addView(tile,params)
+            tile.setOnClickListener {
+                tile.visibility=android.view.View.INVISIBLE
+                remaining--
+                if(remaining==0) {
+                    award()
+                    label("Изображение открыто!")
+                    getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
+                }
             }
         }
         back()
