@@ -13,21 +13,21 @@ class FolderSettingsActivity:Activity() {
  private lateinit var root:LinearLayout
  override fun onCreate(savedInstanceState:Bundle?) {super.onCreate(savedInstanceState);show()}
  private fun show() {
-  root=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(24,32,24,16);setBackgroundColor(Color.rgb(9,17,39))}
+  root=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(24,32,24,16);background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR,intArrayOf(0xFF282052.toInt(),0xFF090F25.toInt()))}
   setContentView(root)
   text("Коллекции изображений",24)
   text("Подключи две разные папки. Изображения выбираются случайно из обеих папок.")
   for(i in 1..2) {
    val uri=prefs.getString("folder_$i",null)
    text("Коллекция $i: "+(uri?.let{Uri.parse(it).lastPathSegment} ?: "не выбрана"))
-   root.addView(Button(this).apply{text="Выбрать папку $i";setOnClickListener {
+   root.addView(Button(this).apply{text="Выбрать папку $i";alpha=.85f;setOnClickListener {
     val intent=Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)}
     startActivityForResult(intent,i)
    }})
 
   }
   text("Из ZIP можно загрузить изображения прямо в приложение, без публикации в GitHub.")
-  root.addView(Button(this).apply {text="Импортировать ZIP с изображениями";setOnClickListener {
+  root.addView(Button(this).apply {text="Импортировать ZIP с изображениями";alpha=.85f;setOnClickListener {
    val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {type="application/zip";addCategory(Intent.CATEGORY_OPENABLE)}
    startActivityForResult(intent,50)
   }})
