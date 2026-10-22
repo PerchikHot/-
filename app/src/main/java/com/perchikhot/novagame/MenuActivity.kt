@@ -75,7 +75,7 @@ class MenuActivity:Activity() {
         frame.addView(background,FrameLayout.LayoutParams(-1,-1))
         val shade=View(this).apply {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0x99080B22.toInt(),0x440C0C2C,0xD0070A21.toInt()))
+                intArrayOf(0x55080B22,0x220C0C2C,0x99070A21.toInt()))
         }
         frame.addView(shade,FrameLayout.LayoutParams(-1,-1))
         setContentView(frame)
@@ -94,7 +94,7 @@ class MenuActivity:Activity() {
     private fun text(container:LinearLayout,value:String,size:Int=20):TextView {
         return TextView(this).apply {
             text=value;textSize=size.toFloat();setTextColor(Color.WHITE);gravity=Gravity.CENTER
-            setShadowLayer(5f,1f,2f,Color.BLACK)
+            setShadowLayer(3f,0f,2f,Color.BLACK)
             setPadding(dp(6),dp(10),dp(6),dp(10))
             container.addView(this)
         }
@@ -129,11 +129,33 @@ class MenuActivity:Activity() {
         action(col,"▶  ИГРАТЬ") {
             showModes()
         }
+        action(col,"✦  ПУТЬ КОЛЛЕКЦИОНЕРА","Уровни, звёзды и новые открытия") {showJourney()}
         action(col,"✦  МАГАЗИН ПЕРСОНАЖЕЙ") {showShop()}
         action(col,"⚙  КОЛЛЕКЦИИ") {startActivity(Intent(this,FolderSettingsActivity::class.java))}
         action(col,"⏻  ВЫХОД") {finishAffinity()}
         col.addView(View(this),LinearLayout.LayoutParams(1,0,1f))
         text(col,"Фон меняется из открытых изображений",12)
+    }
+    private fun showJourney() {
+        setup("journey")
+        val col=overlay()
+        text(col,"✦ ПУТЬ КОЛЛЕКЦИОНЕРА",28)
+        val wins=getSharedPreferences("progress",MODE_PRIVATE).getInt("wins",0)
+        val games=listOf(
+            Triple("ФОТО-ПАЗЛЫ","puzzle","Собери изображение"),
+            Triple("ПАМЯТЬ","memory","Найди все пары"),
+            Triple("ТРИ В РЯД","match3","Создай комбинации"),
+            Triple("НАЙДИ ОТЛИЧИЯ","differences","Проверь внимательность"),
+            Triple("ОТКРОЙ ИЗОБРАЖЕНИЕ","reveal","Раскрой картинку")
+        )
+        text(col,"Пройдено заданий: $wins  •  Очки открывают новые фото",16)
+        val level=wins%games.size
+        val game=games[level]
+        action(col,"▶ УРОВЕНЬ ${wins+1}: ${game.first}",game.third) {
+            startActivity(Intent(this,MainActivity::class.java).putExtra("mode",game.second))
+        }
+        action(col,"★ МАГАЗИН НАГРАД","Обменяй очки на изображения") {showShop()}
+        action(col,"← НАЗАД") {showStart()}
     }
     private fun showModes() {
         setup("modes")
