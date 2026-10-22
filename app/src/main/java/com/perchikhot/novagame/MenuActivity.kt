@@ -35,6 +35,7 @@ class MenuActivity:Activity() {
     }
     override fun onResume() {
         super.onResume()
+        if(screenName=="journey") showJourney()
         handler.removeCallbacks(cycle)
         handler.postDelayed(cycle,11000)
     }
@@ -152,7 +153,7 @@ class MenuActivity:Activity() {
         val level=wins%games.size
         val game=games[level]
         action(col,"▶ УРОВЕНЬ ${wins+1}: ${game.first}",game.third) {
-            startActivity(Intent(this,MainActivity::class.java).putExtra("mode",game.second))
+            startActivity(Intent(this,MainActivity::class.java).putExtra("mode",game.second).putExtra("journey",true))
         }
         action(col,"★ МАГАЗИН НАГРАД","Обменяй очки на изображения") {showShop()}
         action(col,"← НАЗАД") {showStart()}
