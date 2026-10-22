@@ -56,7 +56,7 @@ class MenuActivity:Activity() {
         pictureIndex=(pictureIndex+1)%files.size
         val target=files[pictureIndex]
         Thread {
-            val bitmap=BitmapFactory.decodeFile(target.absolutePath,BitmapFactory.Options().apply {inSampleSize=4})
+            val bitmap=BitmapFactory.decodeFile(target.absolutePath,BitmapFactory.Options().apply {inSampleSize=1})
             runOnUiThread {
                 if(!isFinishing && ::background.isInitialized && bitmap!=null) {
                     background.animate().alpha(0.25f).setDuration(280).withEndAction {
@@ -75,7 +75,7 @@ class MenuActivity:Activity() {
         frame.addView(background,FrameLayout.LayoutParams(-1,-1))
         val shade=View(this).apply {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0xBB080B22.toInt(),0x660C0C2C,0xEE070A21.toInt()))
+                intArrayOf(0x99080B22.toInt(),0x440C0C2C,0xD0070A21.toInt()))
         }
         frame.addView(shade,FrameLayout.LayoutParams(-1,-1))
         setContentView(frame)
@@ -129,8 +129,8 @@ class MenuActivity:Activity() {
         action(col,"▶  ИГРАТЬ") {
             frame.animate().alpha(0f).translationX(-dp(45).toFloat()).setDuration(340).withEndAction {
                 showModes()
-                frame.alpha=0f;frame.translationX=dp(45).toFloat()
-                frame.animate().alpha(1f).translationX(0f).setDuration(360).start()
+                frame.alpha=.72f;frame.translationX=dp(18).toFloat()
+                frame.animate().alpha(1f).translationX(0f).setDuration(220).start()
             }.start()
         }
         action(col,"✦  МАГАЗИН ПЕРСОНАЖЕЙ") {showShop()}
