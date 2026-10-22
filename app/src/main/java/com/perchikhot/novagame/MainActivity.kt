@@ -491,6 +491,10 @@ class MainActivity : Activity() {
                             award(30+(9-moves)*5)
                             label("Три звезды найдены! Изображение открыто!")
                             getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
+                            for(j in 0 until cover.childCount) cover.getChildAt(j).isEnabled=false
+                        } else if(moves==9) {
+                            label("Попытки закончились. Найдено звёзд: ${foundStars.size}/3")
+                            root.addView(button("↻ ПОВТОРИТЬ") {reveal()})
                         }
                     }
                 }
