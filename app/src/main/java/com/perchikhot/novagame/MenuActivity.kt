@@ -153,6 +153,18 @@ class MenuActivity:Activity() {
             Triple("ОТКРОЙ ИЗОБРАЖЕНИЕ","reveal","Раскрой картинку")
         )
         text(col,"Пройдено заданий: $wins  •  Очки открывают новые фото",16)
+        val wallet=getSharedPreferences("MainActivity",MODE_PRIVATE).getInt("score",0)
+        val images=ImageLibrary.imported(this)
+        val unlockedCount=images.indices.count { it==0 || prefs.getBoolean("image_$it",false) }
+        text(col,"★ $wallet очков   •   🖼 $unlockedCount / ${images.size} изображений",16)
+        val progressBar=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=5
+            progress=wins%5
+            progressTintList=android.content.res.ColorStateList.valueOf(0xFFDD80F5.toInt())
+            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(0x66444466)
+        }
+        col.addView(progressBar,LinearLayout.LayoutParams(-1,dp(9)).apply {bottomMargin=dp(10)})
+        text(col,"До следующей серии: ${5-wins%5} уровней",14)
         text(col,"КАРТА ПРИКЛЮЧЕНИЯ",18)
         for(index in 0 until minOf(15,wins+5)) {
             val game=games[index%games.size]
