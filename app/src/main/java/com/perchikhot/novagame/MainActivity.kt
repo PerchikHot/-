@@ -72,7 +72,12 @@ class MainActivity : Activity() {
             journeyAwarded=true
             val progress=getSharedPreferences("progress",MODE_PRIVATE)
             progress.edit().putInt("wins",progress.getInt("wins",0)+1).apply()
-            Toast.makeText(this,"Уровень пройден!",Toast.LENGTH_LONG).show()
+            android.app.AlertDialog.Builder(this)
+                .setTitle("✦ УРОВЕНЬ ПРОЙДЕН!")
+                .setMessage("Новый этап открыт! Награда: +$points очков.\nПродолжай путь и открывай изображения в магазине.")
+                .setPositiveButton("К СЛЕДУЮЩЕМУ УРОВНЮ") { _,_ -> finish() }
+                .setNegativeButton("ОСТАТЬСЯ",null)
+                .show()
         }
         getPreferences(MODE_PRIVATE).edit().putInt("score",score).apply()
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
