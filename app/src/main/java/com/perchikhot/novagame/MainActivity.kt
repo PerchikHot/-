@@ -187,7 +187,7 @@ class MainActivity : Activity() {
         back()
     }
     private fun gallery() {
-        screen("Галерея")
+        startActivity(android.content.Intent(this, GalleryActivity::class.java))\n        /* screen("Галерея")
         label("Заработано очков: $score")
         label("В первой версии здесь пока нет импортированных изображений. Галерея будет подключена к проверенному набору ресурсов.")
         back()
