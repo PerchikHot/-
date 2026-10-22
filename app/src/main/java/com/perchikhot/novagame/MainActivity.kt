@@ -17,7 +17,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         score = getPreferences(MODE_PRIVATE).getInt("score",0)
-        if ((1..2).any { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {
+        if (ImageLibrary.imported(this).isEmpty() && (1..2).all { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {
             startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))
         }
         when(intent.getStringExtra("mode")) {
@@ -32,12 +32,23 @@ class MainActivity : Activity() {
     private fun screen(title: String) {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 30, 24, 16)
-            setBackgroundColor(bg)
+            setPadding(dp(14), dp(18), dp(14), dp(18))
         }
-        val scroll = ScrollView(this)
+        val frame=FrameLayout(this).apply {setBackgroundColor(bg)}
+        val photo=ImageView(this).apply {scaleType=ImageView.ScaleType.CENTER_CROP;alpha=.30f}
+        frame.addView(photo,FrameLayout.LayoutParams(-1,-1))
+        val scroll=ScrollView(this)
         scroll.addView(root)
-        setContentView(scroll)
+        frame.addView(scroll,FrameLayout.LayoutParams(-1,-1))
+        setContentView(frame)
+        val files=ImageLibrary.imported(this)
+        val shop=getSharedPreferences("unlock_shop",MODE_PRIVATE)
+        val available=files.filterIndexed {i,_ -> i==0 || shop.getBoolean("image_$i",false)}
+        if(available.isNotEmpty()) Thread {
+            val bmp=android.graphics.BitmapFactory.decodeFile(available.random().absolutePath,
+                android.graphics.BitmapFactory.Options().apply {inSampleSize=2})
+            runOnUiThread {if(!isFinishing) photo.setImageBitmap(bmp)}
+        }.start()
         label(title, 26)
     }
     private fun label(s:String, size:Int=18) {
@@ -49,7 +60,7 @@ class MainActivity : Activity() {
     private fun button(s:String, action:()->Unit): Button {
         return Button(this).apply {
             text=s; textSize=17f; setTextColor(Color.WHITE)
-            setBackgroundTintList(android.content.res.ColorStateList.valueOf(blue))
+            background=panel(0xD0272855.toInt(),14)
             setOnClickListener { action() }
         }
     }
@@ -59,7 +70,10 @@ class MainActivity : Activity() {
         getPreferences(MODE_PRIVATE).edit().putInt("score",score).apply()
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
-    private fun back() = add("← Выбор режимов") { finish() }
+    private fun back() {
+        root.addView(button("← ВЫБОР РЕЖИМОВ") {finish()},
+            LinearLayout.LayoutParams(-1,dp(52)).apply {topMargin=dp(14)})
+    }
     private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
     private fun panel(color:Int, radius:Int=22):android.graphics.drawable.GradientDrawable =
         android.graphics.drawable.GradientDrawable(
@@ -146,7 +160,7 @@ class MainActivity : Activity() {
                 val index=r*cols+c
                 if(index>=cells) break
                 val b=button("?",{}) 
-                row.addView(b,LinearLayout.LayoutParams(0,(64*resources.displayMetrics.density).toInt(),1f))
+                row.addView(b,LinearLayout.LayoutParams(0,dp(if(cols==6) 53 else 78),1f).apply {setMargins(dp(2),dp(3),dp(2),dp(3))})
                 b.minHeight=0; b.setPadding(0,0,0,0); b.textSize=20f
                 b.setOnClickListener { onCell(index,b) }
                 buttons.add(b)
@@ -260,7 +274,7 @@ class MainActivity : Activity() {
         screen("Три в ряд")
         label("Выбери камень, затем соседний. Три одинаковых по горизонтали или вертикали исчезнут. Новые упадут сверху.",15)
         val tiles=MutableList(36){Random.nextInt(5)}
-        val icons=listOf("💎","⭐","💜","🔷","🌸")
+        val icons=listOf("🔮","💠","🌙","🦋","💎")
         var selected=-1
         var busy=false
         var moves=0
@@ -280,9 +294,7 @@ class MainActivity : Activity() {
             buttons.forEachIndexed { i,b ->
                 b.text=icons[tiles[i]]
                 b.alpha=if(i==selected) .6f else 1f
-                b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                    if(i==selected) Color.rgb(150,84,216) else blue
-                ))
+                b.background=panel(if(i==selected) 0xF08D52B6.toInt() else 0xD0252A5A.toInt(),12)
             }
         }
         fun gravityFill(found:Set<Int>) {
@@ -413,7 +425,7 @@ class MainActivity : Activity() {
                 frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
                 var remaining=16
                 repeat(16) { index ->
-                    val tile=button("✦",{})
+                    val tile=button("",{}).apply {background=panel(if((index/4+index%4)%2==0) 0xE03C3167.toInt() else 0xE023254F.toInt(),5)}
                     val params=android.widget.GridLayout.LayoutParams(
                         android.widget.GridLayout.spec(index/4,1f),
                         android.widget.GridLayout.spec(index%4,1f)
