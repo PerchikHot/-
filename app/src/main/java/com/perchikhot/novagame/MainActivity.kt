@@ -327,12 +327,13 @@ class MainActivity : Activity() {
         var cleared=0
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
-        val maxMoves=if(arcade) 12 else Int.MAX_VALUE
+        val maxMoves=if(arcade) 16 else Int.MAX_VALUE
+        val goal=if(arcade) 30 else 35
         val blocked=if(arcade) setOf(7,28) else emptySet<Int>()
-        val status=TextView(this).apply {text=if(arcade) "АРКАДА • 12 ходов • Цель: 35" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
+        val status=TextView(this).apply {text=if(arcade) "АРКАДА • 16 ходов • Цель: 30" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
         val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
-            max=35
+            max=goal
             progress=0
             progressTintList=android.content.res.ColorStateList.valueOf(0xFFB86DFF.toInt())
         }
@@ -371,7 +372,7 @@ class MainActivity : Activity() {
                 busy=false
                 render()
                 if(arcade && moves>=maxMoves && !completed) {
-                    status.text="ПОРАЖЕНИЕ • Собрано $cleared из 35"
+                    status.text="ПОРАЖЕНИЕ • Собрано $cleared из $goal"
                     root.addView(button("↻ ЕЩЁ ПОПЫТКА") {match3()})
                 }
                 return
@@ -385,13 +386,13 @@ class MainActivity : Activity() {
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f;it.scaleX=1f;it.scaleY=1f}
                 cleared+=found.size
-                progress.progress=minOf(35,cleared)
-                if(cleared>=35 && !completed) {
+                progress.progress=minOf(goal,cleared)
+                if(cleared>=goal && !completed) {
                     completed=true
                     status.text="ПОБЕДА! Собрано $cleared элементов"
                     award(if(arcade) 75 else 40)
                 }
-                status.text="Ходы: $moves / ${if(arcade) 12 else "∞"} • Собрано: $cleared / 35 • КОМБО x$chain"
+                status.text="Ходы: $moves / ${if(arcade) maxMoves else "∞"} • Собрано: $cleared / $goal • КОМБО x$chain"
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
