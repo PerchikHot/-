@@ -12,6 +12,7 @@ import android.view.ViewGroup
 class GalleryActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("gallery",MODE_PRIVATE) }
     private lateinit var list: LinearLayout
+    private var visibleCount=24
     private fun saved(): MutableList<String> = prefs.getString("uris","")!!.split("\n").filter { it.isNotBlank() }.toMutableList()
     private fun save(items:List<String>) { prefs.edit().putString("uris",items.joinToString("\n")).apply() }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState); draw() }
@@ -19,14 +20,37 @@ class GalleryActivity : Activity() {
         val scroll=ScrollView(this).apply { setBackgroundColor(Color.rgb(9,17,39)) }
         list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(18,20,18,20) }
         scroll.addView(list);setContentView(scroll)
-        val heading=TextView(this).apply { text="Галерея • ${saved().size} изображений";textSize=24f;setTextColor(Color.WHITE) }
+        val local=ImageLibrary.imported(this)
+        val heading=TextView(this).apply { text="Галерея • ${saved().size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
         list.addView(heading)
         list.addView(Button(this).apply { text="Добавить изображения с телефона";setOnClickListener {
             val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="image/*";addCategory(Intent.CATEGORY_OPENABLE);putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) }
             startActivityForResult(intent,42)
         } })
         list.addView(TextView(this).apply {text="Файлы остаются на телефоне. Для импорта ZIP сначала распакуй архив в папку с изображениями.";setTextColor(Color.LTGRAY);setPadding(0,12,0,16)})
-        saved().forEachIndexed { index, value ->
+        if(local.isNotEmpty()) {
+            list.addView(TextView(this).apply {text="Импортированные фотографии (${local.size})";textSize=19f;setTextColor(Color.WHITE)})
+            local.take(visibleCount).forEach { file ->
+                val preview=ImageView(this).apply {
+                    scaleType=ImageView.ScaleType.CENTER_CROP
+                    val opts=android.graphics.BitmapFactory.Options().apply {inSampleSize=8}
+                    setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,opts))
+                    setOnClickListener {
+                        val full=ImageView(this@GalleryActivity).apply {
+                            setBackgroundColor(Color.BLACK)
+                            scaleType=ImageView.ScaleType.FIT_CENTER
+                            val options=android.graphics.BitmapFactory.Options().apply {inSampleSize=2}
+                            setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,options))
+                            setOnClickListener {draw()}
+                        }
+                        setContentView(full)
+                    }
+                }
+                list.addView(preview,LinearLayout.LayoutParams(-1,280))
+            }
+            if(visibleCount<local.size) list.addView(Button(this).apply {text="Показать ещё 24";setOnClickListener {visibleCount+=24;draw()}})
+        }
+        saved().take(50).forEachIndexed { index, value ->
             val uri=Uri.parse(value)
             val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL }
             val image=ImageView(this).apply {
