@@ -146,7 +146,7 @@ class MenuActivity:Activity() {
         val col=overlay()
         text(col,"ИСПЫТАТЕЛЬНАЯ ЛАБОРАТОРИЯ",27)
         text(col,"Три подхода к NOVA GAME. Попробуй каждый и выбери самый интересный.",16)
-        action(col,"⚡ АРКАДА: ОХОТА ЗА КОМБО","35 элементов, ограничение по ходам") {
+        action(col,"⚡ АРКАДА: ОХОТА ЗА КОМБО","30 элементов за 16 ходов") {
             startActivity(Intent(this,MainActivity::class.java).putExtra("mode","match3").putExtra("prototype","arcade"))
         }
         action(col,"🧠 ТАКТИКА: ПАМЯТЬ","Найди пары с минимальным числом ошибок") {
