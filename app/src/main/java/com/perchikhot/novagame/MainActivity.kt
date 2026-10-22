@@ -327,7 +327,7 @@ class MainActivity : Activity() {
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
         val maxMoves=if(arcade) 12 else Int.MAX_VALUE
-        val status=TextView(this).apply {text="Ходы: 0 • Собери первую комбинацию";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
+        val status=TextView(this).apply {text=if(arcade) "АРКАДА • 12 ходов • Цель: 35" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         root.addView(status)
         lateinit var buttons:List<Button>
         fun matches():Set<Int> {
@@ -357,13 +357,25 @@ class MainActivity : Activity() {
         }
         fun settle() {
             val found=matches()
-            if(found.isEmpty()) {busy=false;render();return}
+            if(found.isEmpty()) {
+                busy=false
+                render()
+                if(arcade && moves>=maxMoves && !completed) {
+                    status.text="ПОРАЖЕНИЕ • Собрано $cleared из 35"
+                    root.addView(button("↻ ЕЩЁ ПОПЫТКА") {match3()})
+                }
+                return
+            }
             found.forEach {buttons[it].text="✨";buttons[it].animate().alpha(.15f).setDuration(220).start()}
             buttons[0].postDelayed({
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f}
                 cleared+=found.size
-                if(cleared>=35 && !completed) {completed=true;award(if(arcade) 75 else 40)}
+                if(cleared>=35 && !completed) {
+                    completed=true
+                    status.text="ПОБЕДА! Собрано $cleared элементов"
+                    award(if(arcade) 75 else 40)
+                }
                 status.text="Ходы: $moves / ${if(arcade) 12 else "∞"} • Собрано: $cleared / 35"
                 render()
                 buttons[0].postDelayed({settle()},220)
