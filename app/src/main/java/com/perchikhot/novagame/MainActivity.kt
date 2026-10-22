@@ -20,7 +20,14 @@ class MainActivity : Activity() {
         if ((1..2).any { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {
             startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))
         }
-        home()
+        when(intent.getStringExtra("mode")) {
+            "puzzle" -> puzzle()
+            "memory" -> memory()
+            "match3" -> match3()
+            "differences" -> differences()
+            "reveal" -> reveal()
+            else -> home()
+        }
     }
     private fun screen(title: String) {
         root = LinearLayout(this).apply {
@@ -52,7 +59,7 @@ class MainActivity : Activity() {
         getPreferences(MODE_PRIVATE).edit().putInt("score",score).apply()
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
-    private fun back() = add("← Главное меню") { home() }
+    private fun back() = add("← Выбор режимов") { finish() }
     private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
     private fun panel(color:Int, radius:Int=22):android.graphics.drawable.GradientDrawable =
         android.graphics.drawable.GradientDrawable(
@@ -429,5 +436,5 @@ class MainActivity : Activity() {
         startActivity(android.content.Intent(this, GalleryActivity::class.java))
     }
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed() { home() }
+    override fun onBackPressed() { finish() }
 }
