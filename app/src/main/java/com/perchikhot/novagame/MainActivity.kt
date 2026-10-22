@@ -404,11 +404,13 @@ class MainActivity : Activity() {
                 }
             }
         }
-        // Start without pre-existing matches, so the first move is understandable.
-        repeat(100) {
-            val found=matches()
-            if(found.isEmpty()) return@repeat
-            found.forEach {tiles[it]=Random.nextInt(5)}
+        // Clear initial matches before the player starts.
+        var initialMatches=matches()
+        var tries=0
+        while(initialMatches.isNotEmpty() && tries<100) {
+            initialMatches.forEach {tiles[it]=Random.nextInt(5)}
+            initialMatches=matches()
+            tries++
         }
         render()
         back()
