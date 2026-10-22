@@ -133,12 +133,29 @@ class MenuActivity:Activity() {
         action(col,"▶  ИГРАТЬ") {
             showModes()
         }
+        action(col,"🎮  ТРИ ИГРОВЫХ ПРОТОТИПА","Попробуй разные ощущения от игры") {showPrototypes()}
         action(col,"✦  ПУТЬ КОЛЛЕКЦИОНЕРА","Уровни, звёзды и новые открытия") {showJourney()}
         action(col,"✦  МАГАЗИН ПЕРСОНАЖЕЙ") {showShop()}
         action(col,"⚙  КОЛЛЕКЦИИ") {startActivity(Intent(this,FolderSettingsActivity::class.java))}
         action(col,"⏻  ВЫХОД") {finishAffinity()}
         col.addView(View(this),LinearLayout.LayoutParams(1,0,1f))
         text(col,"Фон меняется из открытых изображений",12)
+    }
+    private fun showPrototypes() {
+        setup("prototypes")
+        val col=overlay()
+        text(col,"ИСПЫТАТЕЛЬНАЯ ЛАБОРАТОРИЯ",27)
+        text(col,"Три подхода к NOVA GAME. Попробуй каждый и выбери самый интересный.",16)
+        action(col,"⚡ АРКАДА: ОХОТА ЗА КОМБО","35 элементов, ограничение по ходам") {
+            startActivity(Intent(this,MainActivity::class.java).putExtra("mode","match3").putExtra("prototype","arcade"))
+        }
+        action(col,"🧠 ТАКТИКА: ПАМЯТЬ","Найди пары с минимальным числом ошибок") {
+            startActivity(Intent(this,MainActivity::class.java).putExtra("mode","memory").putExtra("prototype","tactics"))
+        }
+        action(col,"✦ ОТКРЫТИЕ: ТРИ ЗВЕЗДЫ","Девять попыток, награда и изображение") {
+            startActivity(Intent(this,MainActivity::class.java).putExtra("mode","reveal").putExtra("prototype","discovery"))
+        }
+        action(col,"← НАЗАД") {showStart()}
     }
     private fun showJourney() {
         setup("journey")
