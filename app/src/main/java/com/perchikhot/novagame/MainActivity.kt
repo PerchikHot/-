@@ -358,11 +358,20 @@ class MainActivity : Activity() {
         }
         fun gravityFill(found:Set<Int>) {
             for(col in 0..5) {
-                val remaining=(5 downTo 0).map {tiles[it*6+col]}.filterIndexed { index,_ -> (5-index)*6+col !in found }
-                for(row in 5 downTo 0) {
-                    val fromBottom=5-row
-                    tiles[row*6+col]=if(fromBottom<remaining.size) remaining[fromBottom] else Random.nextInt(5)
+                var segment=mutableListOf<Int>()
+                fun refillSegment() {
+                    if(segment.isEmpty()) return
+                    val survivors=segment.asReversed().filter { it !in found }.map { tiles[it] }
+                    segment.asReversed().forEachIndexed { index,position ->
+                        tiles[position]=if(index<survivors.size) survivors[index] else Random.nextInt(5)
+                    }
+                    segment=mutableListOf()
                 }
+                for(row in 5 downTo 0) {
+                    val position=row*6+col
+                    if(position in blocked) refillSegment() else segment.add(position)
+                }
+                refillSegment()
             }
         }
         fun settle() {
