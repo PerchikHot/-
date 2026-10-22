@@ -173,25 +173,81 @@ class MainActivity : Activity() {
         back()
     }
     private fun puzzle() {
-        screen("Пазлы")
-        label("Расставь числа от 1 до 8. Нажми на плитку рядом с пустой.")
-        val cells=(1..8).toMutableList().apply { add(0) }
-        repeat(100) {
-            val z=cells.indexOf(0)
-            val n=listOf(z-3,z+3,if(z%3>0)z-1 else -1,if(z%3<2)z+1 else -1).filter{it in 0..8}.random()
-            cells[z]=cells[n];cells[n]=0
-        }
-        lateinit var buttons:List<Button>
-        buttons=grid(3,9) { i,_ ->
-            val z=cells.indexOf(0)
-            if((i/3==z/3 && kotlin.math.abs(i-z)==1)||kotlin.math.abs(i-z)==3) {
-                cells[z]=cells[i];cells[i]=0
-                buttons.forEachIndexed{idx,b->b.text=if(cells[idx]==0)" " else cells[idx].toString()}
-                if(cells==(1..8).toList()+0) {award();label("Пазл собран!")}
-            }
-        }
-        buttons.forEachIndexed{idx,b->b.text=if(cells[idx]==0)" " else cells[idx].toString()}
+        screen("Фото-пазл")
+        val page=root
+        label("Загружаем случайную фотографию…",16)
         back()
+        Thread {
+            val uri=ImageLibrary.randomUri(this)
+            val bitmap=if(uri!=null) try {
+                val source=android.graphics.ImageDecoder.createSource(contentResolver,uri)
+                android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                    val size=minOf(info.size.width,info.size.height)
+                    decoder.setTargetSize(600,600)
+                }
+            } catch (_:Exception) {null} else null
+            runOnUiThread {
+                if(root!==page) return@runOnUiThread
+                if(bitmap==null) {
+                    label("Нет доступных фото. Импортируй ZIP через «Мои папки».")
+                    return@runOnUiThread
+                }
+                label("Передвигай фрагменты рядом с пустой клеткой, чтобы собрать картинку.",15)
+                val side=minOf(bitmap.width,bitmap.height)
+                val square=android.graphics.Bitmap.createBitmap(bitmap,(bitmap.width-side)/2,(bitmap.height-side)/2,side,side)
+                val tileSize=side/3
+                val parts=(0..8).map { i ->
+                    android.graphics.Bitmap.createBitmap(square,(i%3)*tileSize,(i/3)*tileSize,tileSize,tileSize)
+                }
+                val cells=(0..8).toMutableList()
+                repeat(90) {
+                    val z=cells.indexOf(8)
+                    val neighbors=listOf(z-3,z+3,if(z%3>0)z-1 else -1,if(z%3<2)z+1 else -1).filter {it in 0..8}
+                    val n=neighbors.random()
+                    val t=cells[n];cells[n]=8;cells[z]=t
+                }
+                val board=android.widget.GridLayout(this).apply {columnCount=3;rowCount=3}
+                root.addView(board,1,LinearLayout.LayoutParams(-1,dp(360)))
+                val views=mutableListOf<ImageView>()
+                fun draw() {
+                    views.forEachIndexed { i,view ->
+                        if(cells[i]==8) {
+                            view.setImageDrawable(null)
+                            view.setBackgroundColor(Color.rgb(46,33,79))
+                        } else {
+                            view.setImageBitmap(parts[cells[i]])
+                            view.setBackgroundColor(Color.rgb(20,22,45))
+                        }
+                    }
+                }
+                repeat(9) {i ->
+                    val view=ImageView(this).apply {
+                        scaleType=ImageView.ScaleType.FIT_XY
+                        setOnClickListener {
+                            val z=cells.indexOf(8)
+                            if((i/3==z/3 && kotlin.math.abs(i-z)==1)||kotlin.math.abs(i-z)==3) {
+                                cells[z]=cells[i];cells[i]=8
+                                draw()
+                                if(cells==(0..8).toList()) {
+                                    award(30)
+                                    label("Пазл собран! +30 очков")
+                                }
+                            }
+                        }
+                    }
+                    val params=android.widget.GridLayout.LayoutParams(
+                        android.widget.GridLayout.spec(i/3,1f),
+                        android.widget.GridLayout.spec(i%3,1f)
+                    ).apply {width=0;height=0;setMargins(dp(2),dp(2),dp(2),dp(2))}
+                    board.addView(view,params)
+                    views.add(view)
+                }
+                draw()
+                val preview=ImageView(this).apply {setImageBitmap(square);scaleType=ImageView.ScaleType.FIT_CENTER}
+                label("Образец",16)
+                root.addView(preview,LinearLayout.LayoutParams(-1,dp(150)))
+            }
+        }.start()
     }
     private fun match3() {
         screen("Три в ряд")
