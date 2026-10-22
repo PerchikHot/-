@@ -26,11 +26,36 @@ class SplashActivity:Activity() {
     private inner class SplashView:View(this@SplashActivity) {
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
         private val started=android.os.SystemClock.uptimeMillis()
+        private val photoId=resources.getIdentifier("splash_photo","drawable",packageName)
+        private val photo=if(photoId!=0) BitmapFactory.decodeResource(resources,photoId) else null
         override fun onDraw(c:Canvas) {
             val w=width.toFloat()
             val h=height.toFloat()
             val t=(android.os.SystemClock.uptimeMillis()-started)/1000f
             c.drawColor(0xFF0B0C25.toInt())
+            if(photo!=null) {
+                val caption=(h*.17f).coerceAtLeast(110f*resources.displayMetrics.density)
+                val available=h-caption
+                val scale=minOf(w/photo.width,available/photo.height)
+                val pw=photo.width*scale
+                val ph=photo.height*scale
+                p.color=Color.WHITE
+                c.drawBitmap(photo,null,RectF((w-pw)/2,(available-ph)/2,(w+pw)/2,(available+ph)/2),p)
+                p.color=0xFF16122E.toInt()
+                c.drawRect(0f,available,w,h,p)
+                val phase=(t%2.4f)/2.4f
+                p.color=if(phase<.5f) 0xFFD6B7FF.toInt() else 0xFFFF8BCD.toInt()
+                p.textAlign=Paint.Align.CENTER
+                p.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
+                p.textSize=w*.083f
+                c.drawText(if(phase<.5f) "NOVA GAME" else "FUTA GAME",w*.5f,available+caption*.50f,p)
+                p.color=0xFF433759.toInt()
+                c.drawRoundRect(w*.17f,available+caption*.73f,w*.83f,available+caption*.77f,8f,8f,p)
+                p.color=0xFFB975FA.toInt()
+                c.drawRoundRect(w*.17f,available+caption*.73f,w*(.17f+.66f*(t/2.4f).coerceIn(0f,1f)),available+caption*.77f,8f,8f,p)
+                postInvalidateDelayed(33)
+                return
+            }
             p.shader=LinearGradient(0f,0f,w,h,0xFF30235B.toInt(),0xFF0A1029.toInt(),Shader.TileMode.CLAMP)
             c.drawRoundRect(w*.09f,h*.11f,w*.91f,h*.89f,44f,44f,p)
             p.shader=null
