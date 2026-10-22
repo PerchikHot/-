@@ -73,7 +73,8 @@ class MainActivity : Activity() {
                 val index=r*cols+c
                 if(index>=cells) break
                 val b=button("?",{}) 
-                row.addView(b,LinearLayout.LayoutParams(0,76,1f))
+                row.addView(b,LinearLayout.LayoutParams(0,(64*resources.displayMetrics.density).toInt(),1f))
+                b.minHeight=0; b.setPadding(0,0,0,0); b.textSize=20f
                 b.setOnClickListener { onCell(index,b) }
                 buttons.add(b)
             }
