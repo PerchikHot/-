@@ -480,6 +480,10 @@ class MainActivity : Activity() {
                     ).apply {width=0;height=0;setMargins(1,1,1,1)}
                     cover.addView(tile,params)
                     tile.setOnClickListener {
+                        if(!tile.isEnabled || moves>=9) return@setOnClickListener
+                        tile.isEnabled=false
+                        if(index in stars) foundStars.add(index)
+                        tile.text=if(index in stars) "★" else "·"
                         tile.animate().alpha(0f).scaleX(.8f).scaleY(.8f).setDuration(200).withEndAction {tile.visibility=View.INVISIBLE}.start()
                         moves++
                         remaining--
