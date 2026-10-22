@@ -58,7 +58,7 @@ class MainActivity : Activity() {
         add("💎 Три в ряд") { match3() }
         add("🔎 Найди отличия") { differences() }
         add("✨ Открыть плитки") { reveal() }
-        add("🖼 Галерея") { gallery() }
+        add("🖼 Галерея") { gallery() }\n        add("📁 Папки коллекций") { startActivity(android.content.Intent(this, FolderSettingsActivity::class.java)) }
     }
     private fun grid(cols:Int, cells:Int, onCell:(Int,Button)->Unit):List<Button> {
         val buttons=mutableListOf<Button>()
@@ -172,6 +172,33 @@ class MainActivity : Activity() {
             } else if(i !in positions) Toast.makeText(this,"Совпадает",Toast.LENGTH_SHORT).show()
         }.forEachIndexed{i,b->b.text=changed[i]}
         back()
+    }
+    private fun collectionImages():List<String> {
+        val folderPrefs=getSharedPreferences("folders",MODE_PRIVATE)
+        val active=folderPrefs.getInt("active",2)
+        val tree=folderPrefs.getString("folder_$active",null)
+        if(tree!=null) {
+            val result=mutableListOf<String>()
+            try {
+                val treeUri=android.net.Uri.parse(tree)
+                val id=android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                val children=android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri,id)
+                contentResolver.query(children,arrayOf(
+                    android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE
+                ),null,null,null)?.use { cursor->
+                    while(cursor.moveToNext()) {
+                        val mime=cursor.getString(1) ?: ""
+                        if(mime.startsWith("image/")) {
+                            result.add(android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri,cursor.getString(0)).toString())
+                        }
+                    }
+                }
+            } catch (_:Exception) {}
+            return result
+        }
+        return getSharedPreferences("gallery",MODE_PRIVATE).getString("uris","")!!
+            .split("\n").filter {it.isNotBlank()}
     }
     private fun reveal() {
         screen("Открытие изображения")
