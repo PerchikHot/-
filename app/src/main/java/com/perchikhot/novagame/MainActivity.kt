@@ -53,16 +53,81 @@ class MainActivity : Activity() {
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
     private fun back() = add("← Главное меню") { home() }
+    private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
+    private fun panel(color:Int, radius:Int=22):android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            intArrayOf(color,Color.rgb(17,24,53))
+        ).apply {
+            cornerRadius=dp(radius).toFloat()
+            setStroke(dp(1),Color.rgb(83,68,139))
+        }
+    private fun gameCard(icon:String,title:String,subtitle:String,color:Int,action:()->Unit) {
+        val card=LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(16),dp(17),dp(12),dp(17))
+            background=panel(color)
+            elevation=dp(4).toFloat()
+        }
+        card.addView(TextView(this).apply {
+            text=icon; textSize=31f; gravity=Gravity.CENTER
+        },LinearLayout.LayoutParams(dp(57),dp(64)))
+        val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL}
+        content.addView(TextView(this).apply {
+            text=title; textSize=20f; setTextColor(Color.WHITE)
+            setTypeface(null,android.graphics.Typeface.BOLD)
+        })
+        content.addView(TextView(this).apply {
+            text=subtitle; textSize=12f; setTextColor(Color.rgb(189,190,218))
+            setPadding(0,dp(5),0,0)
+        })
+        card.addView(content,LinearLayout.LayoutParams(0,-2,1f))
+        card.addView(TextView(this).apply {
+            text="›";textSize=30f;setTextColor(Color.rgb(203,179,255))
+        })
+        card.setOnClickListener { action() }
+        card.setOnTouchListener { view,event ->
+            when(event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {view.animate().scaleX(.98f).scaleY(.98f).setDuration(90).start();false}
+                android.view.MotionEvent.ACTION_UP,android.view.MotionEvent.ACTION_CANCEL -> {view.animate().scaleX(1f).scaleY(1f).setDuration(130).start();false}
+                else -> false
+            }
+        }
+        root.addView(card,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(12)})
+    }
     private fun home() {
-        screen("НОВАЯ ИГРА")
-        label("Очки: $score  •  Версия 0.1.0")
-        add("🧩 Пазлы") { puzzle() }
-        add("🃏 Память") { memory() }
-        add("💎 Три в ряд") { match3() }
-        add("🔎 Найди отличия") { differences() }
-        add("✨ Открыть плитки") { reveal() }
-        add("🖼 Галерея") { gallery() }
-        add("📁 Папки коллекций") { startActivity(android.content.Intent(this, FolderSettingsActivity::class.java)) }
+        screen("✦ NOVA GAME ✦")
+        label("ТВОЯ КОЛЛЕКЦИЯ • ТВОИ ИСТОРИИ",13)
+        val banner=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(18),dp(18),dp(18),dp(18))
+            background=panel(Color.rgb(67,38,118),26)
+        }
+        banner.addView(TextView(this).apply {
+            text="✧  ГАЛЕРЕЯ ОТКРЫТИЙ";textSize=21f
+            setTypeface(null,android.graphics.Typeface.BOLD)
+            setTextColor(Color.WHITE)
+        })
+        banner.addView(TextView(this).apply {
+            text="Зарабатывай очки и открывай изображения из своих коллекций"
+            textSize=14f;setTextColor(Color.rgb(220,211,244));setPadding(0,dp(10),0,dp(10))
+        })
+        banner.addView(TextView(this).apply {
+            text="✦  $score очков";textSize=19f;setTextColor(Color.rgb(250,210,255))
+        })
+        root.addView(banner,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(22)})
+        label("ВЫБЕРИ ИГРУ",18)
+        gameCard("🧩","Пазлы","Собери головоломку",Color.rgb(44,47,108)) {puzzle()}
+        gameCard("🃏","Память","Найди одинаковые пары",Color.rgb(60,40,103)) {memory()}
+        gameCard("💎","Три в ряд","Создавай комбинации",Color.rgb(34,65,109)) {match3()}
+        gameCard("🔎","Найди отличия","Проверь внимательность",Color.rgb(67,45,99)) {differences()}
+        gameCard("✨","Открыть плитки","Открой случайное изображение",Color.rgb(84,41,102)) {reveal()}
+        label("КОЛЛЕКЦИЯ",18)
+        gameCard("🖼","Галерея","Просмотр изображений",Color.rgb(39,56,86)) {gallery()}
+        gameCard("📁","Мои папки","Настройка двух коллекций",Color.rgb(39,56,86)) {
+            startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))
+        }
     }
     private fun grid(cols:Int, cells:Int, onCell:(Int,Button)->Unit):List<Button> {
         val buttons=mutableListOf<Button>()
