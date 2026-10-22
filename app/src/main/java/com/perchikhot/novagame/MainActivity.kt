@@ -268,46 +268,55 @@ class MainActivity : Activity() {
     }
     private fun reveal() {
         screen("Открытие изображения")
-        val images=collectionImages()
-        if(images.isEmpty()) {
-            label("Сначала добавь изображения через Галерею.")
-            add("Перейти в галерею") { gallery() }
-            back()
-            return
-        }
-        val index=Random.nextInt(images.size)
-        val uri=android.net.Uri.parse(images[index])
-        label("Открывай плитки. После 16 нажатий изображение появится целиком.")
-        val frame=android.widget.FrameLayout(this)
-        root.addView(frame,LinearLayout.LayoutParams(-1,850))
-        val picture=ImageView(this).apply {
-            scaleType=ImageView.ScaleType.FIT_CENTER
-            try {setImageURI(uri)} catch (_:Exception) { }
-        }
-        frame.addView(picture,android.widget.FrameLayout.LayoutParams(-1,-1))
-        val cover=android.widget.GridLayout(this).apply {
-            columnCount=4;rowCount=4
-        }
-        frame.addView(cover,android.widget.FrameLayout.LayoutParams(-1,-1))
-        var remaining=16
-        repeat(16) {
-            val tile=button("✦",{})
-            val params=android.widget.GridLayout.LayoutParams(
-                android.widget.GridLayout.spec(it/4,1f),
-                android.widget.GridLayout.spec(it%4,1f)
-            ).apply {width=0;height=0;setMargins(1,1,1,1)}
-            cover.addView(tile,params)
-            tile.setOnClickListener {
-                tile.visibility=android.view.View.INVISIBLE
-                remaining--
-                if(remaining==0) {
-                    award()
-                    label("Изображение открыто!")
-                    getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
+        val page=root
+        label("Подбираем фотографию из коллекций…")
+        back()
+        Thread {
+            val uri=ImageLibrary.randomUri(this)
+            val bitmap=if(uri!=null) try {
+                val source=android.graphics.ImageDecoder.createSource(contentResolver,uri)
+                android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                    val width=info.size.width
+                    val height=info.size.height
+                    val factor=maxOf(1,(maxOf(width,height)+1199)/1200)
+                    decoder.setTargetSize(maxOf(1,width/factor),maxOf(1,height/factor))
+                }
+            } catch (_:Exception) {null} else null
+            runOnUiThread {
+                if(root!==page) return@runOnUiThread
+                if(bitmap==null || uri==null) {
+                    label("Не удалось открыть фото. Проверь папки или импортируй ZIP в настройках.")
+                    return@runOnUiThread
+                }
+                val frame=FrameLayout(this)
+                root.addView(frame,1,LinearLayout.LayoutParams(-1,dp(380)))
+                val picture=ImageView(this).apply {
+                    scaleType=ImageView.ScaleType.FIT_CENTER
+                    setImageBitmap(bitmap)
+                }
+                frame.addView(picture,FrameLayout.LayoutParams(-1,-1))
+                val cover=android.widget.GridLayout(this).apply {columnCount=4;rowCount=4}
+                frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
+                var remaining=16
+                repeat(16) { index ->
+                    val tile=button("✦",{})
+                    val params=android.widget.GridLayout.LayoutParams(
+                        android.widget.GridLayout.spec(index/4,1f),
+                        android.widget.GridLayout.spec(index%4,1f)
+                    ).apply {width=0;height=0;setMargins(1,1,1,1)}
+                    cover.addView(tile,params)
+                    tile.setOnClickListener {
+                        tile.visibility=View.INVISIBLE
+                        remaining--
+                        if(remaining==0) {
+                            award()
+                            label("Изображение открыто!")
+                            getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
+                        }
+                    }
                 }
             }
-        }
-        back()
+        }.start()
     }
     private fun gallery() {
         startActivity(android.content.Intent(this, GalleryActivity::class.java))
