@@ -116,6 +116,7 @@ class MainActivity : Activity() {
         banner.addView(TextView(this).apply {
             text="✦  $score очков";textSize=19f;setTextColor(Color.rgb(250,210,255))
         })
+        banner.setOnClickListener { gallery() }
         root.addView(banner,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(22)})
         label("ВЫБЕРИ ИГРУ",18)
         gameCard("🧩","Пазлы","Собери головоломку",Color.rgb(44,47,108)) {puzzle()}
@@ -227,7 +228,7 @@ class MainActivity : Activity() {
     }
     private fun differences() {
         screen("Найди отличия")
-        label("Найди 3 отличающихся символа между строками.")
+        label("Сверху показаны 8 символов. Сравни их с клетками ниже в том же порядке: слева направо, сначала верхний ряд. Нажми на 3 клетки, где символ изменился.")
         val base=List(8){symbols.random()}
         val changed=base.toMutableList()
         val positions=(0..7).shuffled().take(3).toSet()
