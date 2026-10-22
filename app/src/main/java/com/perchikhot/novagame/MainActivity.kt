@@ -67,6 +67,7 @@ class MainActivity : Activity() {
     private fun add(s:String, action:()->Unit) { root.addView(button(s,action)) }
     private fun award(points:Int=10) {
         score+=points
+        getSharedPreferences("progress",MODE_PRIVATE).edit().putInt("wins",getSharedPreferences("progress",MODE_PRIVATE).getInt("wins",0)+1).apply()
         getPreferences(MODE_PRIVATE).edit().putInt("score",score).apply()
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
