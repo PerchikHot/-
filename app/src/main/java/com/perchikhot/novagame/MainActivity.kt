@@ -187,10 +187,7 @@ class MainActivity : Activity() {
         back()
     }
     private fun gallery() {
-        startActivity(android.content.Intent(this, GalleryActivity::class.java))\n        /* screen("Галерея")
-        label("Заработано очков: $score")
-        label("В первой версии здесь пока нет импортированных изображений. Галерея будет подключена к проверенному набору ресурсов.")
-        back()
+        startActivity(android.content.Intent(this, GalleryActivity::class.java))
     }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() { home() }
