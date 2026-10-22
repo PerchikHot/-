@@ -465,6 +465,8 @@ class MainActivity : Activity() {
                 val cover=android.widget.GridLayout(this).apply {columnCount=4;rowCount=4}
                 frame.addView(cover,FrameLayout.LayoutParams(-1,-1))
                 var remaining=16
+                var moves=0
+                label("Задача: открой все плитки. Чем меньше ходов, тем больше награда!",15)
                 repeat(16) { index ->
                     val tile=button("",{}).apply {background=panel(if((index/4+index%4)%2==0) 0xE03C3167.toInt() else 0xE023254F.toInt(),5)}
                     val params=android.widget.GridLayout.LayoutParams(
@@ -473,10 +475,11 @@ class MainActivity : Activity() {
                     ).apply {width=0;height=0;setMargins(1,1,1,1)}
                     cover.addView(tile,params)
                     tile.setOnClickListener {
-                        tile.visibility=View.INVISIBLE
+                        tile.animate().alpha(0f).scaleX(.8f).scaleY(.8f).setDuration(200).withEndAction {tile.visibility=View.INVISIBLE}.start()
+                        moves++
                         remaining--
                         if(remaining==0) {
-                            award()
+                            award(if(moves<=16) 25 else 10)
                             label("Изображение открыто!")
                             getPreferences(MODE_PRIVATE).edit().putBoolean("unlocked_"+uri.toString(),true).apply()
                         }
