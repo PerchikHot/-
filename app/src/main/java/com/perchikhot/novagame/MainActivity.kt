@@ -380,6 +380,22 @@ class MainActivity : Activity() {
                 chain=0
                 busy=false
                 render()
+                if(arcade && !completed && moves<maxMoves) {
+                    var hasMove=false
+                    for(i in tiles.indices) {
+                        if(i in blocked) continue
+                        for(j in listOf(i+1,i+6)) {
+                            if(j>=tiles.size || j in blocked || (j==i+1 && i/6!=j/6)) continue
+                            val t=tiles[i];tiles[i]=tiles[j];tiles[j]=t
+                            if(matches().isNotEmpty()) hasMove=true
+                            tiles[j]=tiles[i];tiles[i]=t
+                        }
+                    }
+                    if(!hasMove && root.findViewWithTag<View>("arcade_stuck")==null) {
+                        status.text="Ходов больше нет — начни новое поле"
+                        root.addView(button("↻ НОВОЕ ПОЛЕ") {match3()}.apply {tag="arcade_stuck"})
+                    }
+                }
                 if(arcade && moves>=maxMoves && !completed && root.findViewWithTag<View>("arcade_retry")==null) {
                     status.text="ПОРАЖЕНИЕ • Собрано $cleared из $goal"
                     root.addView(button("↻ ЕЩЁ ПОПЫТКА") {match3()}.apply {tag="arcade_retry"})
