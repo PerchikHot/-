@@ -428,6 +428,7 @@ class MainActivity : Activity() {
             if(bonus>0) {
                 charges=minOf(3,charges+1)
                 cleared+=bonus
+                powerButton?.text="⚡ УДАР ПО РЯДУ • $charges/3"
                 status.text=if(bonus==5) "🌟 СУПЕРКОМБО! +5 к прогрессу" else "⚡ БОНУС! +2 к прогрессу"
             }
             found.forEach { i ->
