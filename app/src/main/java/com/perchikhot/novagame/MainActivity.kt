@@ -450,7 +450,10 @@ class MainActivity : Activity() {
                     if(valid) possible=true
                 }
             }
-            if(!possible) status.text="Нет стартовых комбинаций — нажми повтор"
+            if(!possible) {
+                root.addView(button("↻ ПЕРЕМЕШАТЬ ПОЛЕ") {match3()})
+                status.text="Нет доступных комбинаций — перемешай поле"
+            }
         }
         if(arcade) {
             var hintsUsed=0
