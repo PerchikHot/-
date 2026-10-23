@@ -369,9 +369,26 @@ class MainActivity : Activity() {
                 android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
             if(bitmap!=null) portrait.setImageBitmap(bitmap)
         }
-        showPhoto(0)
+        // Each character can ship chibi/CHARACTER/{idle,happy,excited,surprised,victory}.png
+        val characterKey=(selected ?: "").replace(Regex("[^A-Za-z0-9_-]"),"_")
+        fun showMood(kind:String) {
+            val moodFile=when(kind) {
+                "great" -> "excited"
+                "good" -> "happy"
+                "miss" -> "surprised"
+                "win" -> "victory"
+                else -> "idle"
+            }
+            val paths=listOf("chibi/$characterKey/$moodFile.png","chibi/$characterKey/idle.png")
+            var sprite:android.graphics.Bitmap?=null
+            for(asset in paths) {
+                try {sprite=assets.open(asset).use {android.graphics.BitmapFactory.decodeStream(it)}} catch (_:Exception) {}
+                if(sprite!=null) break
+            }
+            if(sprite!=null) portrait.setImageBitmap(sprite) else showPhoto(0)
+        }
+        showMood("idle")
         var reactionId=0
-        var variant=0
         return { kind:String ->
             reactionId++
             val id=reactionId
@@ -389,13 +406,10 @@ class MainActivity : Activity() {
                 "win" -> "🥳"
                 else -> "😊"
             }
-            if(photos.size>1 && (kind=="great" || kind=="win" || kind=="good")) {
-                variant=(variant+1)%photos.size
-                portrait.animate().alpha(0.3f).setDuration(120).withEndAction {
-                    showPhoto(variant)
-                    portrait.animate().alpha(1f).setDuration(220).start()
-                }.start()
-            }
+            portrait.animate().alpha(0.3f).setDuration(120).withEndAction {
+                showMood(kind)
+                portrait.animate().alpha(1f).setDuration(220).start()
+            }.start()
             pictureFrame.animate().cancel()
             pictureFrame.animate().scaleX(if(kind=="great" || kind=="win") 1.16f else 1.07f)
                 .scaleY(if(kind=="great" || kind=="win") 1.16f else 1.07f)
@@ -406,6 +420,7 @@ class MainActivity : Activity() {
                 if(reactionId==id && kind!="win") {
                     speech.text="Твой ход! ✨"
                     mood.text="😊"
+                    showMood("idle")
                 }
             },2400)
         }
