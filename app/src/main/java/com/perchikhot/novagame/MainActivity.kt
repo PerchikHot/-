@@ -483,7 +483,7 @@ class MainActivity : Activity() {
                 if(charges>0 && !busy && !completed) {
                     charges--
                     busy=true
-                    val row=Random.nextInt(6)
+                    val row=(0..5).maxByOrNull { r -> (r*6 until r*6+6).count {it !in blocked} } ?: 0
                     val hit=(row*6 until row*6+6).filter {it !in blocked}.toSet()
                     hit.forEach {buttons[it].animate().alpha(.2f).setDuration(200).start()}
                     power.postDelayed({
