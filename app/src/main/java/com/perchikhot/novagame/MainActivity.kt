@@ -83,6 +83,11 @@ class MainActivity : Activity() {
         Toast.makeText(this,"+$points очков! Всего: $score",Toast.LENGTH_SHORT).show()
     }
     private fun back() {
+        root.addView(button("↻ НАЧАТЬ ЗАНОВО") {
+            val restart=android.content.Intent(this,MainActivity::class.java).apply {putExtras(intent)}
+            startActivity(restart)
+            finish()
+        },LinearLayout.LayoutParams(-1,dp(52)).apply {topMargin=dp(10)})
         root.addView(button("← ВЫБОР РЕЖИМОВ") {finish()},
             LinearLayout.LayoutParams(-1,dp(52)).apply {topMargin=dp(14)})
     }
