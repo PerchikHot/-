@@ -440,9 +440,9 @@ class MainActivity : Activity() {
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
         val maxMoves=if(arcade) 16 else Int.MAX_VALUE
-        val goal=if(arcade) 30 else 35
+        val goal=if(arcade) 30 else 100
         val blocked=if(arcade) setOf(7,28) else emptySet<Int>()
-        val status=TextView(this).apply {text=if(arcade) "АРКАДА • 16 ходов • Цель: 30" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
+        val status=TextView(this).apply {text=if(arcade) "АРКАДА • 16 ходов • Цель: 30" else "∞ БЕСКОНЕЧНЫЙ РЕЖИМ • Собрано: 0 • Рекорд: ${getSharedPreferences("endless_match3",MODE_PRIVATE).getInt("best",0)}";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
         if(arcade) label("⚡ Комбинации из 4+ заряжают удар по ряду. Заряды: до 3. Используй усилитель в нужный момент!",14)
         root.addView(status)
         val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
@@ -546,14 +546,21 @@ class MainActivity : Activity() {
                 gravityFill(found)
                 buttons.forEach {it.alpha=1f;it.scaleX=1f;it.scaleY=1f}
                 cleared+=found.size
-                progress.progress=minOf(goal,cleared)
-                if(cleared>=goal && !completed) {
+                progress.progress=if(arcade) minOf(goal,cleared) else cleared%goal
+                if(arcade && cleared>=goal && !completed) {
                     completed=true
                     status.text="ПОБЕДА! Собрано $cleared элементов"
                     react("win")
                     award(if(arcade) 75 else 40)
                 }
-                if(!completed) status.text="Ходы: $moves / ${if(arcade) maxMoves else "∞"} • Собрано: $cleared / $goal • КОМБО x$chain"
+                if(!completed) {
+                    if(!arcade) {
+                        val prefs=getSharedPreferences("endless_match3",MODE_PRIVATE)
+                        if(cleared>prefs.getInt("best",0)) prefs.edit().putInt("best",cleared).apply()
+                        if(cleared/goal>(cleared-found.size)/goal) { react("win"); award(40) }
+                        status.text="∞ БЕСКОНЕЧНО • Ходы: $moves • Собрано: $cleared • Рекорд: ${prefs.getInt("best",0)} • КОМБО x$chain"
+                    } else status.text="Ходы: $moves / $maxMoves • Собрано: $cleared / $goal • КОМБО x$chain"
+                }
                 render()
                 buttons[0].postDelayed({settle()},220)
             },260)
