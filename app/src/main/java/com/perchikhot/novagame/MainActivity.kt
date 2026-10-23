@@ -345,6 +345,7 @@ class MainActivity : Activity() {
         }
         root.addView(progress,LinearLayout.LayoutParams(-1,dp(12)).apply {bottomMargin=dp(12)})
         lateinit var buttons:List<Button>
+        var powerButton:Button?=null
         fun matches():Set<Int> {
             val found=mutableSetOf<Int>()
             for(row in 0..5) for(col in 0..5) {
@@ -355,6 +356,10 @@ class MainActivity : Activity() {
             return found
         }
         fun render() {
+            powerButton?.apply {
+                text="⚡ УДАР ПО РЯДУ • $charges/3"
+                isEnabled=charges>0 && !busy && !completed
+            }
             buttons.forEachIndexed { i,b ->
                 b.text=if(i in blocked) "✕" else icons[tiles[i]]
                 b.isEnabled=i !in blocked
@@ -468,6 +473,7 @@ class MainActivity : Activity() {
         }
         if(arcade) {
             val power=button("⚡ УДАР ПО РЯДУ • 0/3") {}
+            powerButton=power
             root.addView(power)
             fun refreshPower() {
                 power.text="⚡ УДАР ПО РЯДУ • $charges/3"
