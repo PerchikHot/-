@@ -337,6 +337,7 @@ class MainActivity : Activity() {
         val goal=if(arcade) 30 else 35
         val blocked=if(arcade) setOf(7,28) else emptySet<Int>()
         val status=TextView(this).apply {text=if(arcade) "АРКАДА • 16 ходов • Цель: 30" else "Собери 35 элементов";textSize=17f;setTextColor(Color.WHITE);gravity=Gravity.CENTER}
+        if(arcade) label("⚡ Комбинации из 4+ заряжают удар по ряду. Заряды: до 3. Используй усилитель в нужный момент!",14)
         root.addView(status)
         val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
             max=goal
