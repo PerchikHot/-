@@ -408,6 +408,11 @@ class MainActivity : Activity() {
                 return
             }
             chain++
+            val bonus=if(found.size>=5) 5 else if(found.size>=4) 2 else 0
+            if(bonus>0) {
+                cleared+=bonus
+                status.text=if(bonus==5) "🌟 СУПЕРКОМБО! +5 к прогрессу" else "⚡ БОНУС! +2 к прогрессу"
+            }
             found.forEach { i ->
                 buttons[i].text="✦"
                 buttons[i].animate().scaleX(1.22f).scaleY(1.22f).alpha(.2f).setDuration(220).start()
