@@ -439,6 +439,20 @@ class MainActivity : Activity() {
         }
         render()
         if(arcade) {
+            var possible=false
+            for(i in tiles.indices) {
+                if(i in blocked) continue
+                for(j in listOf(i+1,i+6)) {
+                    if(j>=tiles.size || j in blocked || (j==i+1 && i/6!=j/6)) continue
+                    val t=tiles[i];tiles[i]=tiles[j];tiles[j]=t
+                    val valid=matches().isNotEmpty()
+                    tiles[j]=tiles[i];tiles[i]=t
+                    if(valid) possible=true
+                }
+            }
+            if(!possible) status.text="Нет стартовых комбинаций — нажми повтор"
+        }
+        if(arcade) {
             var hintsUsed=0
             root.addView(button("✦ ПОДСКАЗКА (2)") {
                 if(!busy && !completed && hintsUsed<2) {
