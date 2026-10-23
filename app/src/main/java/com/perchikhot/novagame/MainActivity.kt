@@ -328,7 +328,7 @@ class MainActivity : Activity() {
         fun groupName(file:java.io.File)=groupPrefs.getString(file.name,file.nameWithoutExtension) ?: file.nameWithoutExtension
         val available=imported.filterIndexed {i,file -> file.name.startsWith("bundled_") || i==0 || unlocked.getBoolean("image_$i",false)}
         val grouped=available.groupBy {groupName(it)}
-        val selected=grouped.keys.randomOrNull()
+        val selected=grouped.keys.randomOrNull() ?: ChibiArt.roster.random()
         val photos=grouped[selected].orEmpty()
         val row=LinearLayout(this).apply {
             orientation=LinearLayout.HORIZONTAL
@@ -385,7 +385,7 @@ class MainActivity : Activity() {
                 try {sprite=assets.open(asset).use {android.graphics.BitmapFactory.decodeStream(it)}} catch (_:Exception) {}
                 if(sprite!=null) break
             }
-            if(sprite!=null) portrait.setImageBitmap(sprite) else showPhoto(0)
+            if(sprite!=null) portrait.setImageBitmap(sprite) else portrait.setImageBitmap(ChibiArt.render(characterKey,moodFile))
         }
         showMood("idle")
         var reactionId=0
