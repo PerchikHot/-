@@ -32,33 +32,91 @@ class GalleryActivity : Activity() {
         } })
         list.addView(TextView(this).apply {text="Файлы остаются на телефоне. Для импорта ZIP сначала распакуй архив в папку с изображениями.";setTextColor(Color.LTGRAY);setPadding(0,12,0,16)})
         if(local.isNotEmpty()) {
-            list.addView(TextView(this).apply {text="Импортированные фотографии (${local.size})";textSize=19f;setTextColor(Color.WHITE)})
-            local.take(visibleCount).sortedWith(compareBy({groupOf(it.name)},{it.name})).forEach { file ->
-                list.addView(TextView(this).apply {text="Группа: ${groupOf(file.name)}";setTextColor(Color.WHITE);textSize=16f})
-                list.addView(Button(this).apply {text="Объединить с другой группой";setOnClickListener {
-                    val names=local.map {groupOf(it.name)}.distinct().sorted().toTypedArray()
-                    android.app.AlertDialog.Builder(this@GalleryActivity).setTitle("Выбери группу")
-                        .setItems(names) {_,index -> groupPrefs.edit().putString(file.name,names[index]).apply();draw()}
-                        .setNegativeButton("Отмена",null).show()
-                }})
-                val preview=ImageView(this).apply {
-                    scaleType=ImageView.ScaleType.CENTER_CROP
-                    val opts=android.graphics.BitmapFactory.Options().apply {inSampleSize=8}
-                    setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,opts))
-                    setOnClickListener {
-                        val full=ImageView(this@GalleryActivity).apply {
-                            setBackgroundColor(Color.BLACK)
-                            scaleType=ImageView.ScaleType.FIT_CENTER
-                            val options=android.graphics.BitmapFactory.Options().apply {inSampleSize=2}
-                            setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,options))
-                            setOnClickListener {draw()}
-                        }
-                        setContentView(full)
-                    }
+            val groups=local.groupBy {groupOf(it.name)}.toSortedMap()
+            list.addView(TextView(this).apply {
+                text="ПЕРСОНАЖИ • ${groups.size} героинь / ${local.size} изображений"
+                textSize=19f;setTextColor(Color.WHITE);setPadding(0,16,0,12)
+            })
+            groups.entries.take(visibleCount).forEach { (name,photos) ->
+                val section=LinearLayout(this).apply {
+                    orientation=LinearLayout.VERTICAL;setPadding(8,12,8,12)
+                    setBackgroundColor(Color.rgb(23,33,62))
                 }
-                list.addView(preview,LinearLayout.LayoutParams(-1,280))
+                val title=TextView(this).apply {
+                    text="$name • ${photos.size} фото";textSize=19f;setTextColor(Color.WHITE)
+                    setPadding(8,4,8,8)
+                }
+                section.addView(title)
+                val cover=ImageView(this).apply {
+                    scaleType=ImageView.ScaleType.CENTER_CROP
+                    setImageBitmap(android.graphics.BitmapFactory.decodeFile(photos.first().absolutePath,
+                        android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+                }
+                section.addView(cover,LinearLayout.LayoutParams(-1,220))
+                val gallery=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;visibility=android.view.View.GONE}
+                photos.forEach {file ->
+                    val photo=ImageView(this).apply {
+                        scaleType=ImageView.ScaleType.CENTER_CROP
+                        setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,
+                            android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+                        setOnClickListener {
+                            val full=ImageView(this@GalleryActivity).apply {
+                                setBackgroundColor(Color.BLACK);scaleType=ImageView.ScaleType.FIT_CENTER
+                                setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,
+                                    android.graphics.BitmapFactory.Options().apply {inSampleSize=2}))
+                                setOnClickListener {draw()}
+                            }
+                            setContentView(full)
+                        }
+                    }
+                    gallery.addView(photo,LinearLayout.LayoutParams(-1,260))
+                    gallery.addView(Button(this).apply {
+                        text="Переместить изображение"
+                        setOnClickListener {
+                            val options=(listOf("＋ Новая героиня")+groups.keys.filter {it!=name}).toTypedArray()
+                            android.app.AlertDialog.Builder(this@GalleryActivity)
+                                .setTitle("К какому персонажу относится фото?")
+                                .setItems(options) {_,which ->
+                                    if(which==0) {
+                                        val field=EditText(this@GalleryActivity).apply {hint="Имя героини";setSingleLine(true)}
+                                        android.app.AlertDialog.Builder(this@GalleryActivity).setTitle("Новая героиня")
+                                            .setView(field).setPositiveButton("Сохранить") {_,_->
+                                                val entered=field.text.toString().trim()
+                                                if(entered.isNotEmpty()) {groupPrefs.edit().putString(file.name,entered).apply();draw()}
+                                            }.setNegativeButton("Отмена",null).show()
+                                    } else {groupPrefs.edit().putString(file.name,options[which]).apply();draw()}
+                                }.setNegativeButton("Отмена",null).show()
+                        }
+                    })
+                }
+                section.addView(Button(this).apply {
+                    text="Открыть все изображения (${photos.size})"
+                    setOnClickListener {
+                        gallery.visibility=if(gallery.visibility==android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
+                        text=if(gallery.visibility==android.view.View.VISIBLE) "Свернуть" else "Открыть все изображения (${photos.size})"
+                    }
+                })
+                section.addView(Button(this).apply {
+                    text="Переименовать героиню"
+                    setOnClickListener {
+                        val field=EditText(this@GalleryActivity).apply {setText(name);setSingleLine(true)}
+                        android.app.AlertDialog.Builder(this@GalleryActivity).setTitle("Имя персонажа")
+                            .setView(field).setPositiveButton("Сохранить") {_,_->
+                                val newName=field.text.toString().trim()
+                                if(newName.isNotEmpty()) {
+                                    val editor=groupPrefs.edit()
+                                    photos.forEach {editor.putString(it.name,newName)}
+                                    editor.apply();draw()
+                                }
+                            }.setNegativeButton("Отмена",null).show()
+                    }
+                })
+                section.addView(gallery)
+                list.addView(section)
             }
-            if(visibleCount<local.size) list.addView(Button(this).apply {text="Показать ещё 24";setOnClickListener {visibleCount+=24;draw()}})
+            if(visibleCount<groups.size) list.addView(Button(this).apply {
+                text="Показать ещё 24 персонажа";setOnClickListener {visibleCount+=24;draw()}
+            })
         }
         saved().take(50).forEachIndexed { index, value ->
             val uri=Uri.parse(value)
