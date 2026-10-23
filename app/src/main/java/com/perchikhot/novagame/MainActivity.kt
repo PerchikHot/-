@@ -320,8 +320,60 @@ class MainActivity : Activity() {
             }
         }.start()
     }
+    private fun characterCompanion(): (String)->Unit {
+        val imported=ImageLibrary.imported(this)
+        val unlocked=getSharedPreferences("unlock_shop",MODE_PRIVATE)
+        val eligible=imported.filterIndexed {i,_ -> i==0 || unlocked.getBoolean("image_$i",false)}
+        val chosen=eligible.randomOrNull()
+        val groupPrefs=getSharedPreferences("image_groups",MODE_PRIVATE)
+        val characterName=chosen?.let {groupPrefs.getString(it.name,it.nameWithoutExtension)} ?: "Героиня"
+        val row=LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            setPadding(dp(6),dp(4),dp(6),dp(8))
+        }
+        val speech=TextView(this).apply {
+            text="Давай сыграем! ✨"
+            textSize=14f
+            setTextColor(Color.WHITE)
+            gravity=Gravity.CENTER
+            background=panel(0xFF34305F.toInt(),14)
+            setPadding(dp(8),dp(8),dp(8),dp(8))
+        }
+        row.addView(speech,LinearLayout.LayoutParams(0,-2,1f).apply {rightMargin=dp(8)})
+        val portrait=ImageView(this).apply {
+            scaleType=ImageView.ScaleType.CENTER_CROP
+            background=panel(0xFF3D316A.toInt(),16)
+            contentDescription=characterName
+            if(chosen==null) setImageResource(android.R.drawable.ic_menu_gallery)
+            else setImageBitmap(android.graphics.BitmapFactory.decodeFile(chosen.absolutePath,
+                android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+        }
+        row.addView(portrait,LinearLayout.LayoutParams(dp(102),dp(128)))
+        root.addView(row,1)
+        var reactionId=0
+        return { kind:String ->
+            reactionId++
+            val id=reactionId
+            speech.text=when(kind) {
+                "great" -> listOf("Вот это комбо! ✨","Невероятно! 🌟","Ты молодец! 💜").random()
+                "good" -> listOf("Отличный ход!","Так держать! 💜","Здорово получилось!").random()
+                "miss" -> listOf("Попробуй иначе!","Почти получилось!","Не сдавайся!").random()
+                "win" -> "Ура! Победа! 🏆"
+                else -> "Я рядом! ✨"
+            }
+            portrait.animate().cancel()
+            portrait.animate().scaleX(if(kind=="great" || kind=="win") 1.16f else 1.08f)
+                .scaleY(if(kind=="great" || kind=="win") 1.16f else 1.08f)
+                .setDuration(220).withEndAction {
+                    portrait.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+                }.start()
+            row.postDelayed({if(reactionId==id && kind!="win") speech.text="Твой ход! ✨"},2400)
+        }
+    }
     private fun match3() {
         screen("Три в ряд")
+        val react=characterCompanion()
         label("Меняй соседние камни местами. 3 в ряд — исчезновение, 4+ — бонус, 5+ — взрыв соседних клеток!",15)
         val tiles=MutableList(36){Random.nextInt(5)}
         val icons=listOf("💎","🔮","💠","🌟","❤️")
@@ -425,6 +477,7 @@ class MainActivity : Activity() {
             }
             chain++
             val bonus=if(found.size>=5) 5 else if(found.size>=4) 2 else 0
+            react(if(found.size>=5 || chain>=3) "great" else "good")
             if(bonus>0) {
                 charges=minOf(3,charges+1)
                 cleared+=bonus
@@ -443,6 +496,7 @@ class MainActivity : Activity() {
                 if(cleared>=goal && !completed) {
                     completed=true
                     status.text="ПОБЕДА! Собрано $cleared элементов"
+                    react("win")
                     award(if(arcade) 75 else 40)
                 }
                 if(!completed) status.text="Ходы: $moves / ${if(arcade) maxMoves else "∞"} • Собрано: $cleared / $goal • КОМБО x$chain"
@@ -461,6 +515,7 @@ class MainActivity : Activity() {
                         if(matches().isEmpty()) {
                             tiles[previous]=tiles[i];tiles[i]=t
                             status.text="Нет комбинации — попробуй другой ход"
+                            react("miss")
                             render()
                         } else {
                             moves++
@@ -496,6 +551,7 @@ class MainActivity : Activity() {
                         status.text="⚡ ОЧИЩЕН РЯД ${row+1} • +${hit.size}"
                         if(cleared>=goal && !completed) {
                             completed=true
+                            react("win")
                             award(75)
                         }
                         render()
