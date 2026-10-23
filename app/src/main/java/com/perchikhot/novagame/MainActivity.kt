@@ -323,35 +323,54 @@ class MainActivity : Activity() {
     private fun characterCompanion(): (String)->Unit {
         val imported=ImageLibrary.imported(this)
         val unlocked=getSharedPreferences("unlock_shop",MODE_PRIVATE)
-        val eligible=imported.filterIndexed {i,_ -> i==0 || unlocked.getBoolean("image_$i",false)}
-        val chosen=eligible.randomOrNull()
         val groupPrefs=getSharedPreferences("image_groups",MODE_PRIVATE)
-        val characterName=chosen?.let {groupPrefs.getString(it.name,it.nameWithoutExtension)} ?: "Героиня"
+        fun groupName(file:java.io.File)=groupPrefs.getString(file.name,file.nameWithoutExtension) ?: file.nameWithoutExtension
+        val available=imported.filterIndexed {i,_ -> i==0 || unlocked.getBoolean("image_$i",false)}
+        val grouped=available.groupBy {groupName(it)}
+        val selected=grouped.keys.randomOrNull()
+        val photos=grouped[selected].orEmpty()
         val row=LinearLayout(this).apply {
             orientation=LinearLayout.HORIZONTAL
             gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL
             setPadding(dp(6),dp(4),dp(6),dp(8))
         }
+        val message=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
+        val name=TextView(this).apply {
+            text=selected ?: "Героиня"
+            textSize=12f;setTextColor(0xFFE5B7FF.toInt());gravity=Gravity.CENTER
+        }
+        message.addView(name)
         val speech=TextView(this).apply {
-            text="Давай сыграем! ✨"
-            textSize=14f
-            setTextColor(Color.WHITE)
-            gravity=Gravity.CENTER
-            background=panel(0xFF34305F.toInt(),14)
+            text="Давай сыграем! ✨";textSize=14f;setTextColor(Color.WHITE)
+            gravity=Gravity.CENTER;background=panel(0xFF34305F.toInt(),14)
             setPadding(dp(8),dp(8),dp(8),dp(8))
         }
-        row.addView(speech,LinearLayout.LayoutParams(0,-2,1f).apply {rightMargin=dp(8)})
+        message.addView(speech)
+        row.addView(message,LinearLayout.LayoutParams(0,-2,1f).apply {rightMargin=dp(8)})
+        val pictureFrame=FrameLayout(this)
         val portrait=ImageView(this).apply {
             scaleType=ImageView.ScaleType.CENTER_CROP
             background=panel(0xFF3D316A.toInt(),16)
-            contentDescription=characterName
-            if(chosen==null) setImageResource(android.R.drawable.ic_menu_gallery)
-            else setImageBitmap(android.graphics.BitmapFactory.decodeFile(chosen.absolutePath,
-                android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+            contentDescription=selected ?: "Героиня"
         }
-        row.addView(portrait,LinearLayout.LayoutParams(dp(102),dp(128)))
+        pictureFrame.addView(portrait,FrameLayout.LayoutParams(-1,-1))
+        val mood=TextView(this).apply {
+            text="😊";textSize=22f;gravity=Gravity.CENTER
+            background=panel(0xCC292149.toInt(),14)
+        }
+        pictureFrame.addView(mood,FrameLayout.LayoutParams(dp(37),dp(37),Gravity.TOP or Gravity.RIGHT))
+        row.addView(pictureFrame,LinearLayout.LayoutParams(dp(102),dp(128)))
         root.addView(row,1)
+        fun showPhoto(index:Int) {
+            val file=photos.getOrNull(index)
+            if(file==null) {portrait.setImageResource(android.R.drawable.ic_menu_gallery);return}
+            val bitmap=android.graphics.BitmapFactory.decodeFile(file.absolutePath,
+                android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
+            if(bitmap!=null) portrait.setImageBitmap(bitmap)
+        }
+        showPhoto(0)
         var reactionId=0
+        var variant=0
         return { kind:String ->
             reactionId++
             val id=reactionId
@@ -362,13 +381,32 @@ class MainActivity : Activity() {
                 "win" -> "Ура! Победа! 🏆"
                 else -> "Я рядом! ✨"
             }
-            portrait.animate().cancel()
-            portrait.animate().scaleX(if(kind=="great" || kind=="win") 1.16f else 1.08f)
-                .scaleY(if(kind=="great" || kind=="win") 1.16f else 1.08f)
-                .setDuration(220).withEndAction {
-                    portrait.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+            mood.text=when(kind) {
+                "great" -> "😍"
+                "good" -> "🥰"
+                "miss" -> "😯"
+                "win" -> "🥳"
+                else -> "😊"
+            }
+            if(photos.size>1 && (kind=="great" || kind=="win" || kind=="good")) {
+                variant=(variant+1)%photos.size
+                portrait.animate().alpha(0.3f).setDuration(120).withEndAction {
+                    showPhoto(variant)
+                    portrait.animate().alpha(1f).setDuration(220).start()
                 }.start()
-            row.postDelayed({if(reactionId==id && kind!="win") speech.text="Твой ход! ✨"},2400)
+            }
+            pictureFrame.animate().cancel()
+            pictureFrame.animate().scaleX(if(kind=="great" || kind=="win") 1.16f else 1.07f)
+                .scaleY(if(kind=="great" || kind=="win") 1.16f else 1.07f)
+                .setDuration(200).withEndAction {
+                    pictureFrame.animate().scaleX(1f).scaleY(1f).setDuration(260).start()
+                }.start()
+            row.postDelayed({
+                if(reactionId==id && kind!="win") {
+                    speech.text="Твой ход! ✨"
+                    mood.text="😊"
+                }
+            },2400)
         }
     }
     private fun match3() {
