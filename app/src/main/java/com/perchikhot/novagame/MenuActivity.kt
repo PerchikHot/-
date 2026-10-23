@@ -32,6 +32,7 @@ class MenuActivity:Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        ImageLibrary.installBundled(this)
         showStart()
     }
     override fun onResume() {
