@@ -17,6 +17,7 @@ class MainActivity : Activity() {
     private val symbols = listOf("★","◆","♥","☀","♣","✿")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ImageLibrary.installBundled(this)
         score = getPreferences(MODE_PRIVATE).getInt("score",0)
         if (ImageLibrary.imported(this).isEmpty() && (1..2).all { getSharedPreferences("folders",MODE_PRIVATE).getString("folder_$it",null)==null }) {
             startActivity(android.content.Intent(this,FolderSettingsActivity::class.java))
