@@ -380,7 +380,16 @@ class MainActivity : Activity() {
             }
         }
         fun settle() {
-            val found=matches()
+            val matched=matches()
+            val found=matched.toMutableSet()
+            if(matched.size>=5) {
+                matched.forEach { index ->
+                    val row=index/6;val col=index%6
+                    for(next in listOf(index-6,index+6,index-1,index+1)) {
+                        if(next in 0..35 && next !in blocked && kotlin.math.abs(next/6-row)+kotlin.math.abs(next%6-col)==1) found.add(next)
+                    }
+                }
+            }
             if(found.isEmpty()) {
                 chain=0
                 busy=false
