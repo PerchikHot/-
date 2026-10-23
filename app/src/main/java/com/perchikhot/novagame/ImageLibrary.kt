@@ -30,6 +30,8 @@ object ImageLibrary {
                 ctx.assets.open("characters/$name").use {source ->
                     FileOutputStream(file).use {target ->source.copyTo(target)}
                 }
+                val label=name.substringBeforeLast('.').substringBefore("__").replace('_',' ').trim()
+                if(label.isNotBlank()) ctx.getSharedPreferences("image_groups",Context.MODE_PRIVATE).edit().putString(file.name,label).apply()
                 added++
             } catch (_:Exception) {file.delete()}
         }
@@ -76,7 +78,7 @@ object ImageLibrary {
         }
         val sources=mutableListOf<()->Uri?>()
         val shop=ctx.getSharedPreferences("unlock_shop",Context.MODE_PRIVATE)
-        val available=imported(ctx).filterIndexed {index,_ -> index==0 || shop.getBoolean("image_$index",false)}
+        val available=imported(ctx).filterIndexed {index,file -> file.name.startsWith("bundled_") || index==0 || shop.getBoolean("image_$index",false)}
         if(available.isNotEmpty()) sources.add {
             available.randomOrNull()?.let {Uri.fromFile(it)}
         }
