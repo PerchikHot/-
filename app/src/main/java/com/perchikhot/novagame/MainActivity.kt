@@ -324,7 +324,7 @@ class MainActivity : Activity() {
         screen("Три в ряд")
         label("Меняй соседние камни местами. 3 в ряд — исчезновение, 4+ — бонус, 5+ — взрыв соседних клеток!",15)
         val tiles=MutableList(36){Random.nextInt(5)}
-        val icons=listOf("◆","✦","●","⬟","✿")
+        val icons=listOf("💎","🔮","💠","🌟","❤️")
         var selected=-1
         var busy=false
         var moves=0
@@ -365,7 +365,7 @@ class MainActivity : Activity() {
                 b.text=if(i in blocked) "✕" else icons[tiles[i]]
                 b.isEnabled=i !in blocked
                 b.alpha=if(i==selected) .6f else 1f
-                b.background=panel(if(i==selected) 0xF08D52B6.toInt() else 0xD0252A5A.toInt(),12)
+                b.background=panel(if(i==selected) 0xFFAC66F0.toInt() else listOf(0xFF214A91,0xFF633CA5,0xFF226C89,0xFF8B5D26,0xFF8D345C)[tiles[i]].toInt(),14)
             }
         }
         fun gravityFill(found:Set<Int>) {
@@ -505,6 +505,39 @@ class MainActivity : Activity() {
                 }
             }
             power.postDelayed({refreshPower()},100)
+        }
+        // Drag a gem toward an adjacent cell to swap it, as in mobile match-3 games.
+        buttons.forEachIndexed { index, gem ->
+            var downX=0f
+            var downY=0f
+            gem.setOnTouchListener { view, event ->
+                when(event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        downX=event.x; downY=event.y
+                        true
+                    }
+                    android.view.MotionEvent.ACTION_UP -> {
+                        val dx=event.x-downX
+                        val dy=event.y-downY
+                        val threshold=dp(18)
+                        if(kotlin.math.max(kotlin.math.abs(dx),kotlin.math.abs(dy))<threshold) {
+                            view.performClick()
+                        } else {
+                            val target=if(kotlin.math.abs(dx)>kotlin.math.abs(dy)) {
+                                if(dx>0 && index%6<5) index+1 else if(dx<0 && index%6>0) index-1 else -1
+                            } else {
+                                if(dy>0 && index/6<5) index+6 else if(dy<0 && index/6>0) index-6 else -1
+                            }
+                            if(target in 0..35 && index !in blocked && target !in blocked && !busy && !completed) {
+                                selected=index
+                                buttons[target].performClick()
+                            }
+                        }
+                        true
+                    }
+                    else -> true
+                }
+            }
         }
         // Clear initial matches before the player starts.
         var initialMatches=matches()
