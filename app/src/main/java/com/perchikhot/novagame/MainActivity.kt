@@ -322,7 +322,7 @@ class MainActivity : Activity() {
     }
     private fun match3() {
         screen("Три в ряд")
-        label("Выбери камень, затем соседний. Три одинаковых по горизонтали или вертикали исчезнут. Новые упадут сверху.",15)
+        label("Меняй соседние камни местами. 3 в ряд — исчезновение, 4+ — бонус, 5+ — взрыв соседних клеток!",15)
         val tiles=MutableList(36){Random.nextInt(5)}
         val icons=listOf("◆","✦","●","⬟","✿")
         var selected=-1
