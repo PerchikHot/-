@@ -72,6 +72,36 @@ object ChibiArt {
         oval(outfit,172f,210f,210f,263f)
         circle(Color.rgb(248,204,182),62f,254f,13f)
         circle(Color.rgb(248,204,182),195f,254f,13f)
+        // Distinct silhouettes and signature accessories.
+        when(name) {
+            "Aqua" -> { oval(h,103f,1f,154f,49f);circle(Color.rgb(44,153,223),128f,11f,13f) }
+            "Tenten" -> {circle(h,48f,49f,29f);circle(h,207f,49f,29f)}
+            "Temari" -> {for(x in listOf(43f,87f,170f,211f)) circle(h,x,51f,25f)}
+            "Shinobu" -> {
+                oval(Color.rgb(145,113,203),23f,42f,89f,99f)
+                oval(Color.rgb(145,113,203),167f,42f,233f,99f)
+                circle(Color.rgb(99,217,200),44f,67f,11f)
+                circle(Color.rgb(99,217,200),211f,67f,11f)
+            }
+            "Rebecca" -> {circle(h,48f,60f,27f);circle(h,208f,60f,27f)}
+            "Nami","Orihime","Rias","Hancock" -> {
+                oval(h,34f,139f,72f,277f);oval(h,183f,139f,221f,277f)
+            }
+            "Mitsuri" -> {
+                oval(Color.rgb(143,201,125),28f,153f,75f,269f)
+                oval(Color.rgb(143,201,125),181f,153f,228f,269f)
+            }
+            "Nezuko" -> {
+                oval(Color.rgb(177,91,64),43f,164f,77f,255f)
+                oval(Color.rgb(177,91,64),178f,164f,212f,255f)
+            }
+            "ZeroTwo","Yamato" -> {
+                p.color=if(name=="ZeroTwo") Color.rgb(204,70,91) else Color.rgb(173,84,104)
+                val left=Path().apply {moveTo(70f,55f);lineTo(82f,5f);lineTo(94f,55f);close()}
+                val right=Path().apply {moveTo(162f,55f);lineTo(174f,5f);lineTo(186f,55f);close()}
+                canvas.drawPath(left,p);canvas.drawPath(right,p)
+            }
+        }
         // Hair behind head and face.
         oval(h,40f,20f,216f,222f)
         oval(Color.rgb(251,214,191),56f,43f,201f,210f)
@@ -100,6 +130,21 @@ object ChibiArt {
         canvas.drawArc(mouth,if(mood=="surprised") 0f else 10f,
             if(mood=="surprised") 360f else 160f,false,p)
         p.style=Paint.Style.FILL
+        // Costume details that remain recognizable in a small game portrait.
+        when(name) {
+            "Aqua" -> {rect(Color.WHITE,121f,225f,135f,273f,4f);circle(Color.YELLOW,128f,238f,8f)}
+            "Shinobu" -> {
+                oval(Color.rgb(226,223,248),61f,208f,104f,254f)
+                oval(Color.rgb(226,223,248),152f,208f,195f,254f)
+            }
+            "Nezuko" -> {
+                rect(Color.rgb(230,151,173),109f,230f,148f,274f,5f)
+                rect(Color.rgb(70,137,93),112f,158f,146f,170f,5f)
+            }
+            "Asuka" -> {oval(Color.rgb(209,65,55),81f,227f,175f,277f)}
+            "Erza","Yamato" -> {rect(Color.rgb(207,217,230),102f,231f,153f,269f,7f)}
+            "ZeroTwo" -> {rect(Color.WHITE,96f,230f,159f,275f,10f)}
+        }
         // Collar and small decorative bow.
         oval(Color.WHITE,104f,207f,130f,224f)
         oval(Color.WHITE,129f,207f,155f,224f)
