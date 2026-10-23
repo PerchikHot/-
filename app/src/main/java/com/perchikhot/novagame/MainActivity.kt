@@ -326,7 +326,7 @@ class MainActivity : Activity() {
         val unlocked=getSharedPreferences("unlock_shop",MODE_PRIVATE)
         val groupPrefs=getSharedPreferences("image_groups",MODE_PRIVATE)
         fun groupName(file:java.io.File)=groupPrefs.getString(file.name,file.nameWithoutExtension) ?: file.nameWithoutExtension
-        val available=imported.filterIndexed {i,_ -> i==0 || unlocked.getBoolean("image_$i",false)}
+        val available=imported.filterIndexed {i,file -> file.name.startsWith("bundled_") || i==0 || unlocked.getBoolean("image_$i",false)}
         val grouped=available.groupBy {groupName(it)}
         val selected=grouped.keys.randomOrNull()
         val photos=grouped[selected].orEmpty()
