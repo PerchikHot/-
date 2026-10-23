@@ -13,6 +13,9 @@ class GalleryActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("gallery",MODE_PRIVATE) }
     private lateinit var list: LinearLayout
     private var visibleCount=24
+    private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
+    private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
+
     private fun saved(): MutableList<String> = prefs.getString("uris","")!!.split("\n").filter { it.isNotBlank() }.toMutableList()
     private fun save(items:List<String>) { prefs.edit().putString("uris",items.joinToString("\n")).apply() }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState); draw() }
@@ -30,7 +33,14 @@ class GalleryActivity : Activity() {
         list.addView(TextView(this).apply {text="Файлы остаются на телефоне. Для импорта ZIP сначала распакуй архив в папку с изображениями.";setTextColor(Color.LTGRAY);setPadding(0,12,0,16)})
         if(local.isNotEmpty()) {
             list.addView(TextView(this).apply {text="Импортированные фотографии (${local.size})";textSize=19f;setTextColor(Color.WHITE)})
-            local.take(visibleCount).forEach { file ->
+            local.take(visibleCount).sortedWith(compareBy({groupOf(it.name)},{it.name})).forEach { file ->
+                list.addView(TextView(this).apply {text="Группа: ${groupOf(file.name)}";setTextColor(Color.WHITE);textSize=16f})
+                list.addView(Button(this).apply {text="Объединить с другой группой";setOnClickListener {
+                    val names=local.map {groupOf(it.name)}.distinct().sorted().toTypedArray()
+                    android.app.AlertDialog.Builder(this@GalleryActivity).setTitle("Выбери группу")
+                        .setItems(names) {_,index -> groupPrefs.edit().putString(file.name,names[index]).apply();draw()}
+                        .setNegativeButton("Отмена",null).show()
+                }})
                 val preview=ImageView(this).apply {
                     scaleType=ImageView.ScaleType.CENTER_CROP
                     val opts=android.graphics.BitmapFactory.Options().apply {inSampleSize=8}
