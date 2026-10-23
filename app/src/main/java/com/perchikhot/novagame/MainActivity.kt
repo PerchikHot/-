@@ -438,6 +438,34 @@ class MainActivity : Activity() {
             tries++
         }
         render()
+        if(arcade) {
+            var hintsUsed=0
+            root.addView(button("✦ ПОДСКАЗКА (2)") {
+                if(!busy && !completed && hintsUsed<2) {
+                    var suggested:Pair<Int,Int>?=null
+                    for(i in tiles.indices) {
+                        if(i in blocked) continue
+                        for(j in listOf(i+1,i+6)) {
+                            if(j>=tiles.size || j in blocked || (j==i+1 && i/6!=j/6)) continue
+                            val original=tiles[i]
+                            tiles[i]=tiles[j]
+                            tiles[j]=original
+                            val valid=matches().isNotEmpty()
+                            tiles[j]=tiles[i]
+                            tiles[i]=original
+                            if(valid) {suggested=i to j;break}
+                        }
+                        if(suggested!=null) break
+                    }
+                    if(suggested!=null) {
+                        hintsUsed++
+                        selected=suggested.first
+                        render()
+                        status.text="Подсказка: клетки ${suggested.first+1} и ${suggested.second+1} • Осталось ${2-hintsUsed}"
+                    } else status.text="Доступных комбинаций нет — начни заново"
+                }
+            })
+        }
         back()
     }
     private fun differences() {
