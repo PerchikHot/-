@@ -337,7 +337,7 @@ class MainActivity : Activity() {
         }
         val message=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER}
         val name=TextView(this).apply {
-            text=selected ?: "Героиня"
+            text=mapOf("Aqua" to "Аква","Shinobu" to "Синобу","Erza" to "Эрза","Temari" to "Темари","Tenten" to "Тен-Тен","Nezuko" to "Незуко","ZeroTwo" to "Зеро Ту","Rias" to "Риас","Mitsuri" to "Мицури","Nami" to "Нами","Alpha" to "Альфа","Yamato" to "Ямато","Shion" to "Шион","Noelle" to "Ноэль","Alice" to "Алиса","Hinata" to "Хината","Rebecca" to "Ребекка","Asuka" to "Аска","Orihime" to "Орихиме","Rukia" to "Рукия","Hancock" to "Хэнкок","Nobara" to "Нобара","Mimosa" to "Мимоза","Shuna" to "Шуна","Darkness" to "Даркнесс","Yuno" to "Юно").getOrDefault(selected,selected ?: "Героиня")
             textSize=12f;setTextColor(0xFFE5B7FF.toInt());gravity=Gravity.CENTER
         }
         message.addView(name)
@@ -350,7 +350,7 @@ class MainActivity : Activity() {
         row.addView(message,LinearLayout.LayoutParams(0,-2,1f).apply {rightMargin=dp(8)})
         val pictureFrame=FrameLayout(this)
         val portrait=ImageView(this).apply {
-            scaleType=ImageView.ScaleType.CENTER_CROP
+            scaleType=ImageView.ScaleType.FIT_CENTER
             background=panel(0xFF3D316A.toInt(),16)
             contentDescription=selected ?: "Героиня"
         }
@@ -360,7 +360,7 @@ class MainActivity : Activity() {
             background=panel(0xCC292149.toInt(),14)
         }
         pictureFrame.addView(mood,FrameLayout.LayoutParams(dp(37),dp(37),Gravity.TOP or Gravity.RIGHT))
-        row.addView(pictureFrame,LinearLayout.LayoutParams(dp(102),dp(128)))
+        row.addView(pictureFrame,LinearLayout.LayoutParams(dp(128),dp(158)))
         root.addView(row,1)
         fun showPhoto(index:Int) {
             val file=photos.getOrNull(index)
