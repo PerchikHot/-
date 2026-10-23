@@ -370,7 +370,7 @@ class MainActivity : Activity() {
             if(bitmap!=null) portrait.setImageBitmap(bitmap)
         }
         // Each character can ship chibi/CHARACTER/{idle,happy,excited,surprised,victory}.png
-        val characterKey=(selected ?: "").replace(Regex("[^A-Za-z0-9_-]"),"_")
+        val characterKey=(photos.firstOrNull()?.nameWithoutExtension?.removePrefix("bundled_")?.substringBefore("__") ?: (selected ?: "")).replace(Regex("[^A-Za-z0-9_-]"),"_")
         fun showMood(kind:String) {
             val moodFile=when(kind) {
                 "great" -> "excited"
