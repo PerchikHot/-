@@ -329,6 +329,7 @@ class MainActivity : Activity() {
         var busy=false
         var moves=0
         var chain=0
+        var charges=0
         var cleared=0
         var completed=false
         val arcade=intent.getStringExtra("prototype")=="arcade"
@@ -419,6 +420,7 @@ class MainActivity : Activity() {
             chain++
             val bonus=if(found.size>=5) 5 else if(found.size>=4) 2 else 0
             if(bonus>0) {
+                charges=minOf(3,charges+1)
                 cleared+=bonus
                 status.text=if(bonus==5) "🌟 СУПЕРКОМБО! +5 к прогрессу" else "⚡ БОНУС! +2 к прогрессу"
             }
@@ -463,6 +465,38 @@ class MainActivity : Activity() {
                     } else {selected=i;render()}
                 }
             }
+        }
+        if(arcade) {
+            val power=button("⚡ УДАР ПО РЯДУ • 0/3") {}
+            root.addView(power)
+            fun refreshPower() {
+                power.text="⚡ УДАР ПО РЯДУ • $charges/3"
+                power.isEnabled=charges>0 && !busy && !completed
+            }
+            power.setOnClickListener {
+                if(charges>0 && !busy && !completed) {
+                    charges--
+                    busy=true
+                    val row=Random.nextInt(6)
+                    val hit=(row*6 until row*6+6).filter {it !in blocked}.toSet()
+                    hit.forEach {buttons[it].animate().alpha(.2f).setDuration(200).start()}
+                    power.postDelayed({
+                        gravityFill(hit)
+                        cleared+=hit.size
+                        progress.progress=minOf(goal,cleared)
+                        buttons.forEach {it.alpha=1f}
+                        status.text="⚡ ОЧИЩЕН РЯД ${row+1} • +${hit.size}"
+                        if(cleared>=goal && !completed) {
+                            completed=true
+                            award(75)
+                        }
+                        render()
+                        if(!completed) settle() else busy=false
+                        refreshPower()
+                    },230)
+                }
+            }
+            power.postDelayed({refreshPower()},100)
         }
         // Clear initial matches before the player starts.
         var initialMatches=matches()
