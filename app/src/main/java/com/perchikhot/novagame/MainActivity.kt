@@ -451,8 +451,28 @@ class MainActivity : Activity() {
                 }
             }
             if(!possible) {
-                root.addView(button("↻ ПЕРЕМЕШАТЬ ПОЛЕ") {match3()})
-                status.text="Нет доступных комбинаций — перемешай поле"
+                var retries=0
+                while(!possible && retries<150) {
+                    for(i in tiles.indices) if(i !in blocked) tiles[i]=Random.nextInt(5)
+                    val immediate=matches()
+                    if(immediate.isEmpty()) {
+                        for(i in tiles.indices) {
+                            if(i in blocked) continue
+                            for(j in listOf(i+1,i+6)) {
+                                if(j>=tiles.size || j in blocked || (j==i+1 && i/6!=j/6)) continue
+                                val t=tiles[i];tiles[i]=tiles[j];tiles[j]=t
+                                if(matches().isNotEmpty()) possible=true
+                                tiles[j]=tiles[i];tiles[i]=t
+                            }
+                        }
+                    }
+                    retries++
+                }
+                render()
+                if(!possible) {
+                    root.addView(button("↻ НОВОЕ ПОЛЕ") {match3()})
+                    status.text="Не удалось создать игровое поле"
+                }
             }
         }
         if(arcade) {
