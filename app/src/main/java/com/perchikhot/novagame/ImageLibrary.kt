@@ -6,11 +6,35 @@ import android.provider.DocumentsContract
 import java.io.File
 import java.util.ArrayDeque
 import java.util.zip.ZipInputStream
+import java.io.FileOutputStream
 import kotlin.random.Random
 
 object ImageLibrary {
     private fun store(ctx:Context)=File(ctx.filesDir,"imported_images")
     fun imported(ctx:Context):List<File> = store(ctx).listFiles()?.filter { it.isFile && it.length()>0 }?.sortedBy { it.name } ?: emptyList()
+
+    // Copies any bundled starter portraits from assets/characters into the gallery once.
+    // The APK can therefore ship a ready-to-use collection without requiring a ZIP import.
+    fun installBundled(ctx:Context):Int {
+        val destination=store(ctx)
+        destination.mkdirs()
+        val names=try {ctx.assets.list("characters")?.toList().orEmpty()} catch (_:Exception) {emptyList()}
+        var added=0
+        for(name in names.sorted()) {
+            val extension=name.substringAfterLast('.',"").lowercase()
+            if(extension !in setOf("jpg","jpeg","png","webp")) continue
+            val safeName=name.replace(Regex("[^A-Za-z0-9_.-]"),"_")
+            val file=File(destination,"bundled_$safeName")
+            if(file.exists() && file.length()>0) continue
+            try {
+                ctx.assets.open("characters/$name").use {source ->
+                    FileOutputStream(file).use {target ->source.copyTo(target)}
+                }
+                added++
+            } catch (_:Exception) {file.delete()}
+        }
+        return added
+    }
 
     fun importZip(ctx:Context,uri:Uri):Int {
         val directory=store(ctx)
