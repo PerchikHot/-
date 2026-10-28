@@ -18,6 +18,16 @@ class GalleryActivity : Activity() {
     private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
     private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
 
+    // Persisted document URIs can point to very large camera photos. Decode
+    // sampled previews instead of loading full-resolution bitmaps into each row.
+    private fun sampledImage(uri:Uri, sampleSize:Int):android.graphics.Bitmap? =
+        try {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                android.graphics.BitmapFactory.decodeStream(stream,null,
+                    android.graphics.BitmapFactory.Options().apply { inSampleSize=sampleSize })
+            }
+        } catch (_:Exception) { null }
+
     private fun saved(): MutableList<String> = prefs.getString("uris","")!!.split("\n").filter { it.isNotBlank() }.toMutableList()
     private fun save(items:List<String>) { prefs.edit().putString("uris",items.joinToString("\n")).apply() }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState); draw() }
@@ -146,9 +156,12 @@ class GalleryActivity : Activity() {
             val image=ImageView(this).apply {
                 layoutParams=LinearLayout.LayoutParams(180,180)
                 scaleType=ImageView.ScaleType.CENTER_CROP
-                try {setImageURI(uri)} catch (_:Exception) {setImageResource(android.R.drawable.ic_menu_report_image)}
+                val preview=sampledImage(uri,8)
+                if(preview!=null) setImageBitmap(preview) else setImageResource(android.R.drawable.ic_menu_report_image)
                 setOnClickListener {
-                    val view=ImageView(this@GalleryActivity).apply {setBackgroundColor(Color.BLACK);scaleType=ImageView.ScaleType.FIT_CENTER;setImageURI(uri)}
+                    val view=ImageView(this@GalleryActivity).apply {setBackgroundColor(Color.BLACK);scaleType=ImageView.ScaleType.FIT_CENTER
+                        val preview=sampledImage(uri,2)
+                        if(preview!=null) setImageBitmap(preview) else setImageResource(android.R.drawable.ic_menu_report_image)}
                     fullscreenOpen=true
                     setContentView(view)
                     view.setOnClickListener {draw()}
