@@ -50,8 +50,10 @@ class GalleryActivity : Activity() {
                 setOnClickListener {
                     // Both imported and user-selected photos can appear here.
                     val candidates=local.map { Uri.fromFile(it) } + savedItems.map { Uri.parse(it) }
-                    val uri=candidates.random()
-                    val bitmap=sampledImage(uri,4)
+                    // Persisted URIs may become unavailable after a file is moved.
+                    // Try other images instead of failing on the first random pick.
+                    val bitmap=candidates.shuffled().asSequence()
+                        .mapNotNull { sampledImage(it,4) }.firstOrNull()
                     if (bitmap==null) {
                         Toast.makeText(this@GalleryActivity,"Изображение недоступно",Toast.LENGTH_SHORT).show()
                     } else {
