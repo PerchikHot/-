@@ -228,9 +228,11 @@ class NovaDesktop(tk.Tk):
                 preview = image.convert("RGBA").copy()
             self.gallery_photo = ImageTk.PhotoImage(preview)
             self.gallery_preview.config(image=self.gallery_photo, text="")
-        except (OSError, ValueError) as exc:
+            return True
+        except (OSError, ValueError, Image.DecompressionBombError) as exc:
             self.gallery_photo = None
             self.gallery_preview.config(image="", text=f"Не удалось открыть {path.name}: {exc}")
+            return False
 
 
 if __name__ == "__main__":
