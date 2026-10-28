@@ -42,6 +42,7 @@ object ImageLibrary {
         val directory=store(ctx)
         directory.mkdirs()
         var count=0
+        var nextImageId=0
         var total=0L
         ctx.contentResolver.openInputStream(uri)?.use { input ->
             ZipInputStream(input.buffered()).use { zip ->
@@ -50,20 +51,32 @@ object ImageLibrary {
                     val ext=entry.name.substringAfterLast('.',"").lowercase()
                     if(!entry.isDirectory && ext in setOf("jpg","jpeg","png","webp")) {
                         if(count>=3000) break
-                        val destination=File(directory,"image_%05d.%s".format(count,ext))
-                        var written=0L
-                        destination.outputStream().use { out ->
-                            val buffer=ByteArray(32768)
-                            while(true) {
-                                val n=zip.read(buffer)
-                                if(n<0) break
-                                written+=n
-                                total+=n
-                                if(written>15_000_000L || total>600_000_000L) throw IllegalStateException("Архив слишком большой")
-                                out.write(buffer,0,n)
-                            }
+                        // Keep older imports and their gallery group labels intact.
+                        var destination=File(directory,"image_%05d.%s".format(nextImageId,ext))
+                        while(destination.exists()) {
+                            nextImageId++
+                            destination=File(directory,"image_%05d.%s".format(nextImageId,ext))
                         }
-                        count++
+                        nextImageId++
+                        var written=0L
+                        try {
+                            destination.outputStream().use { out ->
+                                val buffer=ByteArray(32768)
+                                while(true) {
+                                    val n=zip.read(buffer)
+                                    if(n<0) break
+                                    written+=n
+                                    total+=n
+                                    if(written>15_000_000L || total>600_000_000L) throw IllegalStateException("Архив слишком большой")
+                                    out.write(buffer,0,n)
+                                }
+                            }
+                            count++
+                        } catch (error:Exception) {
+                            // Remove only the incomplete new file, never an old import.
+                            destination.delete()
+                            throw error
+                        }
                     }
                     zip.closeEntry()
                 }
