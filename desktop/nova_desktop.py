@@ -20,6 +20,13 @@ SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
 
+def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]:
+    """Try distinct local files in random order, without retrying broken ones."""
+    if count <= 0 or limit <= 0:
+        return []
+    return (rng or random).sample(range(count), min(count, limit))
+
+
 class MemoryGame:
     """State machine kept independent of tkinter for deterministic tests."""
 
