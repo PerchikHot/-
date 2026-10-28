@@ -3,7 +3,7 @@ import unittest
 import random
 from collections import Counter
 
-from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index
+from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -48,6 +48,14 @@ class KeyboardControlsTests(unittest.TestCase):
         for key in ("", "Escape", "space", "0", "h", "F5"):
             self.assertIsNone(memory_key_to_index(key))
         self.assertEqual(memory_key_to_index("A"), 9)
+
+
+class RestartShortcutTests(unittest.TestCase):
+    def test_n_restarts_but_other_keys_do_not(self):
+        self.assertTrue(is_new_game_key("n"))
+        self.assertTrue(is_new_game_key("N"))
+        for key in ("", "Escape", "a", "Enter", "nn"):
+            self.assertFalse(is_new_game_key(key))
 
 
 class RandomGalleryTests(unittest.TestCase):
