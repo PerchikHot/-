@@ -102,6 +102,9 @@ object ImageLibrary {
             available.randomOrNull()?.let {Uri.fromFile(it)}
         }
         folders.forEach { folder -> sources.add {randomFromTree(ctx,Uri.parse(folder))} }
+        // Do not always prefer imported images: when a local collection exists,
+        // the previously selected external folders must still get a chance.
+        sources.shuffle()
         for(source in sources) {
             val uri=try {source()} catch (_:Exception) {null}
             if(uri!=null) return uri
