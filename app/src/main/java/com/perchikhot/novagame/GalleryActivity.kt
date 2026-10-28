@@ -58,9 +58,12 @@ class GalleryActivity : Activity() {
                 }
                 section.addView(cover,LinearLayout.LayoutParams(-1,220))
                 val gallery=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;visibility=android.view.View.GONE}
-                // Decode thumbnails only when the user expands this group.
+                // Decode at most 24 thumbnails per tap to avoid exhausting
+                // memory when a character has hundreds of imported photos.
+                var loadedPhotos=0
                 fun populateGallery() {
-                photos.forEach {file ->
+                val batch=photos.drop(loadedPhotos).take(24)
+                batch.forEach {file ->
                     val photo=ImageView(this).apply {
                         scaleType=ImageView.ScaleType.CENTER_CROP
                         setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,
@@ -96,13 +99,23 @@ class GalleryActivity : Activity() {
                         }
                     })
                 }
+                loadedPhotos+=batch.size
+                if(loadedPhotos<photos.size) {
+                    gallery.addView(Button(this).apply {
+                        text="Показать ещё 24 фото (${photos.size-loadedPhotos} осталось)"
+                        setOnClickListener {
+                            gallery.removeView(this)
+                            populateGallery()
+                        }
+                    })
+                }
                 }
                 section.addView(Button(this).apply {
-                    text="Открыть все изображения (${photos.size})"
+                    text="Открыть изображения (${photos.size})"
                     setOnClickListener {
                         if (gallery.childCount == 0) populateGallery()
                         gallery.visibility=if(gallery.visibility==android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
-                        text=if(gallery.visibility==android.view.View.VISIBLE) "Свернуть" else "Открыть все изображения (${photos.size})"
+                        text=if(gallery.visibility==android.view.View.VISIBLE) "Свернуть" else "Открыть изображения (${photos.size})"
                     }
                 })
                 section.addView(Button(this).apply {
