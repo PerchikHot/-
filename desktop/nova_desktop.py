@@ -27,6 +27,11 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
     return (rng or random).sample(range(count), min(count, limit))
 
 
+def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) -> bool:
+    """Reject extreme or malformed image dimensions before full decoding."""
+    return width <= 0 or height <= 0 or width * height > max_pixels
+
+
 def memory_key_to_index(key: str) -> int | None:
     """Map 1–9 and A–G to the sixteen cards, without touching gallery keys."""
     normalized = key.lower()
@@ -255,6 +260,8 @@ class NovaDesktop(tk.Tk):
     def _open_image(self, path: Path):
         try:
             with Image.open(path) as source:
+                if is_oversized_image(*source.size):
+                    raise ValueError("Изображение слишком большое для предпросмотра")
                 image = ImageOps.exif_transpose(source)
                 image.thumbnail((900, 650), Image.Resampling.LANCZOS)
                 preview = image.convert("RGBA").copy()
