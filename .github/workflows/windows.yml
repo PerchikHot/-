@@ -1,0 +1,30 @@
+name: Nova Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install desktop dependencies
+        run: python -m pip install --disable-pip-version-check pillow pyinstaller
+      - name: Validate and test Windows preview
+        run: |
+          python -m py_compile desktop/nova_desktop.py
+          python -m unittest discover -s desktop -p "test_*.py" -v
+      - name: Package Windows preview
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name NovaGame-Windows desktop/nova_desktop.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NovaGame-Windows-preview
+          path: dist/NovaGame-Windows.exe
+          if-no-files-found: error
+          retention-days: 14
