@@ -18,13 +18,37 @@ class GalleryActivity : Activity() {
     private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
     private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
 
-    // Persisted document URIs can point to very large camera photos. Decode
-    // sampled previews instead of loading full-resolution bitmaps into each row.
+    // Bound decoded bitmaps by dimensions, not just a fixed sample factor:
+    // very large camera images must not exhaust memory in the gallery.
+    private fun boundedSample(width:Int,height:Int,requested:Int):Int {
+        var sample=requested.coerceAtLeast(1)
+        while(width/sample>1600 || height/sample>1600) sample*=2
+        return sample
+    }
     private fun sampledImage(uri:Uri, sampleSize:Int):android.graphics.Bitmap? =
         try {
-            contentResolver.openInputStream(uri)?.use { stream ->
-                android.graphics.BitmapFactory.decodeStream(stream,null,
-                    android.graphics.BitmapFactory.Options().apply { inSampleSize=sampleSize })
+            val bounds=android.graphics.BitmapFactory.Options().apply {inJustDecodeBounds=true}
+            contentResolver.openInputStream(uri)?.use {stream ->
+                android.graphics.BitmapFactory.decodeStream(stream,null,bounds)
+            }
+            if(bounds.outWidth<=0 || bounds.outHeight<=0) null else {
+                val options=android.graphics.BitmapFactory.Options().apply {
+                    inSampleSize=boundedSample(bounds.outWidth,bounds.outHeight,sampleSize)
+                }
+                contentResolver.openInputStream(uri)?.use {stream ->
+                    android.graphics.BitmapFactory.decodeStream(stream,null,options)
+                }
+            }
+        } catch (_:Exception) { null }
+    private fun sampledFile(file:java.io.File, sampleSize:Int):android.graphics.Bitmap? =
+        try {
+            val bounds=android.graphics.BitmapFactory.Options().apply {inJustDecodeBounds=true}
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath,bounds)
+            if(bounds.outWidth<=0 || bounds.outHeight<=0) null else {
+                android.graphics.BitmapFactory.decodeFile(file.absolutePath,
+                    android.graphics.BitmapFactory.Options().apply {
+                        inSampleSize=boundedSample(bounds.outWidth,bounds.outHeight,sampleSize)
+                    })
             }
         } catch (_:Exception) { null }
 
@@ -96,8 +120,7 @@ class GalleryActivity : Activity() {
                 section.addView(title)
                 val cover=ImageView(this).apply {
                     scaleType=ImageView.ScaleType.CENTER_CROP
-                    setImageBitmap(android.graphics.BitmapFactory.decodeFile(photos.first().absolutePath,
-                        android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+                    setImageBitmap(sampledFile(photos.first(),8))
                 }
                 section.addView(cover,LinearLayout.LayoutParams(-1,220))
                 val gallery=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;visibility=android.view.View.GONE}
@@ -109,13 +132,11 @@ class GalleryActivity : Activity() {
                 batch.forEach {file ->
                     val photo=ImageView(this).apply {
                         scaleType=ImageView.ScaleType.CENTER_CROP
-                        setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,
-                            android.graphics.BitmapFactory.Options().apply {inSampleSize=8}))
+                        setImageBitmap(sampledFile(file,8))
                         setOnClickListener {
                             val full=ImageView(this@GalleryActivity).apply {
                                 setBackgroundColor(Color.BLACK);scaleType=ImageView.ScaleType.FIT_CENTER
-                                setImageBitmap(android.graphics.BitmapFactory.decodeFile(file.absolutePath,
-                                    android.graphics.BitmapFactory.Options().apply {inSampleSize=2}))
+                                setImageBitmap(sampledFile(file,2))
                                 setOnClickListener {draw()}
                             }
                             fullscreenOpen=true
