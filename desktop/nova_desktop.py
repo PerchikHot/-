@@ -62,6 +62,7 @@ class NovaDesktop(tk.Tk):
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
         self.gallery_photo = None
+        self._pending_hide = None
         self._build()
 
     def _label(self, parent, title, size=13):
@@ -87,6 +88,12 @@ class NovaDesktop(tk.Tk):
         self._show("memory")
 
     def _show(self, page: str):
+        # A delayed flip must never update widgets after switching tabs.
+        if self._pending_hide is not None:
+            self.after_cancel(self._pending_hide)
+            self._pending_hide = None
+            self.game.hide_mismatch()
+        self.buttons = []
         for child in self.content.winfo_children():
             child.destroy()
         if page == "memory":
@@ -130,11 +137,12 @@ class NovaDesktop(tk.Tk):
         result = self.game.choose(index)
         self._render_memory()
         if result == "miss":
-            self.after(700, self._hide_mismatch)
+            self._pending_hide = self.after(700, self._hide_mismatch)
         elif result == "win":
             messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!")
 
     def _hide_mismatch(self):
+        self._pending_hide = None
         self.game.hide_mismatch()
         self._render_memory()
 
