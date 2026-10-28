@@ -38,6 +38,10 @@ class GalleryActivity : Activity() {
         scroll.addView(list);setContentView(scroll)
         val local=ImageLibrary.imported(this)
         val savedItems=saved()
+        val savedHeading=TextView(this).apply {
+            text="С ТЕЛЕФОНА • ${savedItems.size} изображений"
+            textSize=19f;setTextColor(Color.WHITE);setPadding(0,16,0,12)
+        }
         val heading=TextView(this).apply { text="Галерея • ${savedItems.size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
         list.addView(heading)
         list.addView(Button(this).apply { text="Добавить изображения с телефона";setOnClickListener {
@@ -45,6 +49,10 @@ class GalleryActivity : Activity() {
             startActivityForResult(intent,42)
         } })
         list.addView(TextView(this).apply {text="Файлы остаются на телефоне. Для импорта ZIP сначала распакуй архив в папку с изображениями.";setTextColor(Color.LTGRAY);setPadding(0,12,0,16)})
+        if(savedItems.isNotEmpty()) list.addView(Button(this).apply {
+            text="↓ К изображениям с телефона (${savedItems.size})"
+            setOnClickListener { savedHeading.post { scroll.smoothScrollTo(0,savedHeading.top) } }
+        })
         if(local.isNotEmpty()) {
             val groups=local.groupBy {groupOf(it.name)}.toSortedMap()
             list.addView(TextView(this).apply {
@@ -150,6 +158,7 @@ class GalleryActivity : Activity() {
                 text="Показать ещё 24 персонажа";setOnClickListener {visibleCount+=24;draw()}
             })
         }
+        if(savedItems.isNotEmpty()) list.addView(savedHeading)
         savedItems.take(savedVisibleCount).forEachIndexed { index, value ->
             val uri=Uri.parse(value)
             val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL }
