@@ -42,7 +42,13 @@ object ImageLibrary {
         val directory=store(ctx)
         directory.mkdirs()
         var count=0
-        var nextImageId=0
+        // Continue after every existing import, regardless of its extension.
+        // This keeps sorted gallery indices (and existing unlocks) stable.
+        var nextImageId=directory.listFiles()?.mapNotNull { file ->
+            if(file.name.startsWith("image_"))
+                file.name.removePrefix("image_").substringBefore('.').toIntOrNull()
+            else null
+        }?.maxOrNull()?.plus(1) ?: 0
         var total=0L
         ctx.contentResolver.openInputStream(uri)?.use { input ->
             ZipInputStream(input.buffered()).use { zip ->
