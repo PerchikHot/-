@@ -37,6 +37,11 @@ def memory_key_to_index(key: str) -> int | None:
     return None
 
 
+def is_new_game_key(key: str) -> bool:
+    """Restart only from the memory tab; ignore unrelated shortcuts."""
+    return key.lower() == "n"
+
+
 class MemoryGame:
     """State machine kept independent of tkinter for deterministic tests."""
 
@@ -126,7 +131,7 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
-        self._label(top, "Карточки: 1–9, A–G", 10).pack(side="right", padx=12)
+        self._label(top, "Карточки: 1–9, A–G • N — новая игра", 10).pack(side="right", padx=12)
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
         self.buttons = []
@@ -169,11 +174,18 @@ class NovaDesktop(tk.Tk):
     def _handle_memory_key(self, event):
         if self.current_page != "memory":
             return
+        if is_new_game_key(event.keysym):
+            self._new_game()
+            return
         index = memory_key_to_index(event.keysym)
         if index is not None:
             self._flip(index)
 
     def _new_game(self):
+        # Cancel the old game's pending mismatch before replacing its state.
+        if self._pending_hide is not None:
+            self.after_cancel(self._pending_hide)
+            self._pending_hide = None
         self.game = MemoryGame()
         self._show("memory")
 
