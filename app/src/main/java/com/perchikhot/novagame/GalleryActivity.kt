@@ -14,6 +14,7 @@ class GalleryActivity : Activity() {
     private lateinit var list: LinearLayout
     private var visibleCount=24
     private var savedVisibleCount=50
+    private var fullscreenOpen=false
     private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
     private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
 
@@ -21,6 +22,7 @@ class GalleryActivity : Activity() {
     private fun save(items:List<String>) { prefs.edit().putString("uris",items.joinToString("\n")).apply() }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState); draw() }
     private fun draw() {
+        fullscreenOpen=false
         val scroll=ScrollView(this).apply { setBackgroundColor(Color.rgb(9,17,39)) }
         list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(18,20,18,20) }
         scroll.addView(list);setContentView(scroll)
@@ -68,6 +70,7 @@ class GalleryActivity : Activity() {
                                     android.graphics.BitmapFactory.Options().apply {inSampleSize=2}))
                                 setOnClickListener {draw()}
                             }
+                            fullscreenOpen=true
                             setContentView(full)
                         }
                     }
@@ -129,6 +132,7 @@ class GalleryActivity : Activity() {
                 try {setImageURI(uri)} catch (_:Exception) {setImageResource(android.R.drawable.ic_menu_report_image)}
                 setOnClickListener {
                     val view=ImageView(this@GalleryActivity).apply {setBackgroundColor(Color.BLACK);scaleType=ImageView.ScaleType.FIT_CENTER;setImageURI(uri)}
+                    fullscreenOpen=true
                     setContentView(view)
                     view.setOnClickListener {draw()}
                 }
@@ -156,5 +160,7 @@ class GalleryActivity : Activity() {
         save(items);draw()
     }
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed(){super.onBackPressed()}
+    override fun onBackPressed(){
+        if(fullscreenOpen) draw() else super.onBackPressed()
+    }
 }
