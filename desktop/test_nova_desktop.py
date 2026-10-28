@@ -70,10 +70,6 @@ class RandomGalleryTests(unittest.TestCase):
         self.assertEqual(sorted(random_candidate_indices(3, rng=random.Random(1))), [0, 1, 2])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class GalleryImageSizeTests(unittest.TestCase):
     def test_common_phone_photos_remain_supported(self):
         self.assertFalse(is_oversized_image(8000, 6000))
@@ -83,3 +79,7 @@ class GalleryImageSizeTests(unittest.TestCase):
         self.assertTrue(is_oversized_image(12000, 9000))
         self.assertTrue(is_oversized_image(0, 100))
         self.assertTrue(is_oversized_image(-1, 100))
+
+
+if __name__ == "__main__":
+    unittest.main()
