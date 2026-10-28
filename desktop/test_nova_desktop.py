@@ -1,8 +1,9 @@
 """Headless tests for the Nova Windows preview state machine."""
 import unittest
+import random
 from collections import Counter
 
-from nova_desktop import MemoryGame
+from nova_desktop import MemoryGame, random_candidate_indices
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -35,6 +36,18 @@ class MemoryGameTests(unittest.TestCase):
         game = MemoryGame(seed=1)
         self.assertEqual(game.choose(-1), "ignored")
         self.assertEqual(game.choose(16), "ignored")
+
+
+class RandomGalleryTests(unittest.TestCase):
+    def test_random_candidates_are_unique_and_bounded(self):
+        indices = random_candidate_indices(100, limit=12, rng=random.Random(7))
+        self.assertEqual(len(indices), 12)
+        self.assertEqual(len(set(indices)), 12)
+        self.assertTrue(all(0 <= index < 100 for index in indices))
+
+    def test_empty_or_small_gallery(self):
+        self.assertEqual(random_candidate_indices(0), [])
+        self.assertEqual(sorted(random_candidate_indices(3, rng=random.Random(1))), [0, 1, 2])
 
 
 if __name__ == "__main__":
