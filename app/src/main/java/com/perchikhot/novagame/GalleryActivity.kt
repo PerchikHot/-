@@ -13,6 +13,7 @@ class GalleryActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("gallery",MODE_PRIVATE) }
     private lateinit var list: LinearLayout
     private var visibleCount=24
+    private var savedVisibleCount=50
     private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
     private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
 
@@ -24,7 +25,8 @@ class GalleryActivity : Activity() {
         list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(18,20,18,20) }
         scroll.addView(list);setContentView(scroll)
         val local=ImageLibrary.imported(this)
-        val heading=TextView(this).apply { text="Галерея • ${saved().size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
+        val savedItems=saved()
+        val heading=TextView(this).apply { text="Галерея • ${savedItems.size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
         list.addView(heading)
         list.addView(Button(this).apply { text="Добавить изображения с телефона";setOnClickListener {
             val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="image/*";addCategory(Intent.CATEGORY_OPENABLE);putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) }
@@ -118,7 +120,7 @@ class GalleryActivity : Activity() {
                 text="Показать ещё 24 персонажа";setOnClickListener {visibleCount+=24;draw()}
             })
         }
-        saved().take(50).forEachIndexed { index, value ->
+        savedItems.take(savedVisibleCount).forEachIndexed { index, value ->
             val uri=Uri.parse(value)
             val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL }
             val image=ImageView(this).apply {
@@ -135,6 +137,10 @@ class GalleryActivity : Activity() {
             row.addView(Button(this).apply {text="Удалить #${index+1}";setOnClickListener {val items=saved();items.remove(value);save(items);draw()} })
             list.addView(row)
         }
+        if(savedVisibleCount<savedItems.size) list.addView(Button(this).apply {
+            text="Показать ещё изображения (${savedItems.size-savedVisibleCount} осталось)"
+            setOnClickListener {savedVisibleCount+=50;draw()}
+        })
     }
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
