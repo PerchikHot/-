@@ -27,6 +27,16 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
     return (rng or random).sample(range(count), min(count, limit))
 
 
+def memory_key_to_index(key: str) -> int | None:
+    """Map 1–9 and A–G to the sixteen cards, without touching gallery keys."""
+    normalized = key.lower()
+    if normalized in "123456789" and len(normalized) == 1:
+        return int(normalized) - 1
+    if len(normalized) == 1 and "a" <= normalized <= "g":
+        return 9 + ord(normalized) - ord("a")
+    return None
+
+
 class MemoryGame:
     """State machine kept independent of tkinter for deterministic tests."""
 
@@ -71,6 +81,7 @@ class NovaDesktop(tk.Tk):
         self.gallery_photo = None
         self._pending_hide = None
         self._build()
+        self.bind("<KeyPress>", self._handle_memory_key)
 
     def _label(self, parent, title, size=13):
         return tk.Label(parent, text=title, bg=BACKGROUND, fg=TEXT,
@@ -95,6 +106,7 @@ class NovaDesktop(tk.Tk):
         self._show("memory")
 
     def _show(self, page: str):
+        self.current_page = page
         # A delayed flip must never update widgets after switching tabs.
         if self._pending_hide is not None:
             self.after_cancel(self._pending_hide)
@@ -114,6 +126,7 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
+        self._label(top, "Карточки: 1–9, A–G", 10).pack(side="right", padx=12)
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
         self.buttons = []
@@ -152,6 +165,13 @@ class NovaDesktop(tk.Tk):
         self._pending_hide = None
         self.game.hide_mismatch()
         self._render_memory()
+
+    def _handle_memory_key(self, event):
+        if self.current_page != "memory":
+            return
+        index = memory_key_to_index(event.keysym)
+        if index is not None:
+            self._flip(index)
 
     def _new_game(self):
         self.game = MemoryGame()
