@@ -3,7 +3,7 @@ import unittest
 import random
 from collections import Counter
 
-from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key
+from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -72,3 +72,14 @@ class RandomGalleryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GalleryImageSizeTests(unittest.TestCase):
+    def test_common_phone_photos_remain_supported(self):
+        self.assertFalse(is_oversized_image(8000, 6000))
+        self.assertFalse(is_oversized_image(10000, 8000))
+
+    def test_extreme_and_invalid_dimensions_are_rejected(self):
+        self.assertTrue(is_oversized_image(12000, 9000))
+        self.assertTrue(is_oversized_image(0, 100))
+        self.assertTrue(is_oversized_image(-1, 100))
