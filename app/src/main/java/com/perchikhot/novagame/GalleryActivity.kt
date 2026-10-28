@@ -44,6 +44,29 @@ class GalleryActivity : Activity() {
         }
         val heading=TextView(this).apply { text="Галерея • ${savedItems.size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
         list.addView(heading)
+        if (local.isNotEmpty() || savedItems.isNotEmpty()) {
+            list.addView(Button(this).apply {
+                text="🎲 Случайное изображение"
+                setOnClickListener {
+                    // Both imported and user-selected photos can appear here.
+                    val candidates=local.map { Uri.fromFile(it) } + savedItems.map { Uri.parse(it) }
+                    val uri=candidates.random()
+                    val bitmap=sampledImage(uri,4)
+                    if (bitmap==null) {
+                        Toast.makeText(this@GalleryActivity,"Изображение недоступно",Toast.LENGTH_SHORT).show()
+                    } else {
+                        val full=ImageView(this@GalleryActivity).apply {
+                            setBackgroundColor(Color.BLACK)
+                            scaleType=ImageView.ScaleType.FIT_CENTER
+                            setImageBitmap(bitmap)
+                            setOnClickListener { draw() }
+                        }
+                        fullscreenOpen=true
+                        setContentView(full)
+                    }
+                }
+            })
+        }
         list.addView(Button(this).apply { text="Добавить изображения с телефона";setOnClickListener {
             val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="image/*";addCategory(Intent.CATEGORY_OPENABLE);putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) }
             startActivityForResult(intent,42)
