@@ -212,11 +212,13 @@ class NovaDesktop(tk.Tk):
         if not self.gallery_files:
             messagebox.showinfo("Галерея", "Сначала выбери папку с изображениями.")
             return
-        index = random.randrange(len(self.gallery_files))
-        self.gallery_list.selection_clear(0, tk.END)
-        self.gallery_list.selection_set(index)
-        self.gallery_list.see(index)
-        self._open_image(self.gallery_files[index])
+        for index in random_candidate_indices(len(self.gallery_files)):
+            if self._open_image(self.gallery_files[index]):
+                self.gallery_list.selection_clear(0, tk.END)
+                self.gallery_list.selection_set(index)
+                self.gallery_list.see(index)
+                return
+        self.gallery_status.config(text="Не удалось открыть доступные изображения")
 
     def _open_image(self, path: Path):
         try:
