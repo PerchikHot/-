@@ -3,7 +3,7 @@ import unittest
 import random
 from collections import Counter
 
-from nova_desktop import MemoryGame, random_candidate_indices
+from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -36,6 +36,18 @@ class MemoryGameTests(unittest.TestCase):
         game = MemoryGame(seed=1)
         self.assertEqual(game.choose(-1), "ignored")
         self.assertEqual(game.choose(16), "ignored")
+
+
+
+class KeyboardControlsTests(unittest.TestCase):
+    def test_all_sixteen_cards_are_reachable(self):
+        keys = "123456789abcdefg"
+        self.assertEqual([memory_key_to_index(key) for key in keys], list(range(16)))
+
+    def test_non_card_keys_do_not_flip_cards(self):
+        for key in ("", "Escape", "space", "0", "h", "F5"):
+            self.assertIsNone(memory_key_to_index(key))
+        self.assertEqual(memory_key_to_index("A"), 9)
 
 
 class RandomGalleryTests(unittest.TestCase):
