@@ -47,6 +47,11 @@ def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     return images
 
 
+def gallery_preview_is_visible(previewed: Path | None, visible: list[Path]) -> bool:
+    """Keep a preview only while its file belongs to the filtered gallery."""
+    return previewed is not None and previewed in visible
+
+
 def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]:
     """Try distinct local files in random order, without retrying broken ones."""
     if count <= 0 or limit <= 0:
@@ -219,6 +224,7 @@ class NovaDesktop(tk.Tk):
         self._seen_random_indices: set[int] = set()
         self.gallery_filter = tk.StringVar()
         self.gallery_photo = None
+        self._previewed_path: Path | None = None
         self._pending_hide = None
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
@@ -406,6 +412,13 @@ class NovaDesktop(tk.Tk):
             index for index, path in enumerate(self.gallery_files)
             if gallery_matches_query(path, self.gallery_filter.get(), self.gallery_root)
         ]
+        # A removed or newly excluded image must not remain in the preview.
+        visible_paths = [self.gallery_files[i] for i in self.visible_gallery_indices]
+        if self._previewed_path is not None and not gallery_preview_is_visible(
+                self._previewed_path, visible_paths):
+            self._previewed_path = None
+            self.gallery_photo = None
+            self.gallery_preview.config(image="", text="Выбери изображение из списка")
         for index in self.visible_gallery_indices:
             path = self.gallery_files[index]
             self.gallery_list.insert(tk.END, str(path.relative_to(self.gallery_root)) if self.gallery_root else path.name)
@@ -450,10 +463,12 @@ class NovaDesktop(tk.Tk):
                 image.thumbnail((900, 650), Image.Resampling.LANCZOS)
                 preview = image.convert("RGBA").copy()
             self.gallery_photo = ImageTk.PhotoImage(preview)
+            self._previewed_path = path
             self.gallery_preview.config(image=self.gallery_photo, text="")
             return True
         except (OSError, ValueError, Image.DecompressionBombError) as exc:
             self.gallery_photo = None
+            self._previewed_path = None
             self.gallery_preview.config(image="", text=f"Не удалось открыть {path.name}: {exc}")
             return False
 
