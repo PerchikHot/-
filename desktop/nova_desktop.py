@@ -195,6 +195,15 @@ class MemoryGame:
             self.flipped.clear()
 
 
+def gallery_shortcut_action(keysym: str, state: int) -> str | None:
+    """Windows-friendly gallery shortcuts, independent of focused widget."""
+    if keysym.lower() == "f" and state & 0x4:  # Tk ControlMask
+        return "focus"
+    if keysym == "Escape":
+        return "clear"
+    return None
+
+
 class NovaDesktop(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -298,6 +307,16 @@ class NovaDesktop(tk.Tk):
         self._render_memory()
 
     def _handle_memory_key(self, event):
+        action = gallery_shortcut_action(event.keysym, event.state)
+        if action == "focus":
+            if self.current_page != "gallery":
+                self._show("gallery")
+            self.gallery_filter_entry.focus_set()
+            self.gallery_filter_entry.select_range(0, tk.END)
+            return "break"
+        if self.current_page == "gallery" and action == "clear":
+            self._clear_gallery_filter()
+            return "break"
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
@@ -324,6 +343,7 @@ class NovaDesktop(tk.Tk):
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
                               bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
         filter_box.pack(side="left", padx=6, ipady=8)
+        self.gallery_filter_entry = filter_box
         filter_box.bind("<KeyRelease>", lambda _event: self._refresh_gallery())
         self._button(toolbar, "Очистить", self._clear_gallery_filter).pack(side="left", padx=4)
         self.gallery_status = self._label(toolbar, "Выбери папку с изображениями", 12)
@@ -341,7 +361,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
