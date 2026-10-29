@@ -235,6 +235,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "focus"
     if keysym == "Escape":
         return "clear"
+    if keysym == "F5":
+        return "refresh"
     return None
 
 
@@ -357,6 +359,9 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "clear":
             self._clear_gallery_filter()
             return "break"
+        if self.current_page == "gallery" and action == "refresh":
+            self._reload_folder()
+            return "break"
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
@@ -409,7 +414,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
