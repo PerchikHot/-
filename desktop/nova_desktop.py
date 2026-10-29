@@ -78,8 +78,13 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     text = searchable.casefold()
     for word in query.casefold().split():
         if word.startswith('ext:'):
-            extension = word[4:].lstrip('.')
-            if not extension or f'.{extension}' not in IMAGE_TYPES or path.suffix.casefold() != f'.{extension}':
+            # Accept a comma-separated set of formats, e.g. ext:png,jpg,
+            # without scanning or decoding any image content.
+            formats = word[4:].split(',')
+            extensions = {f".{part.lstrip('.')}" for part in formats}
+            if (any(not part or part == '.' for part in formats)
+                    or not extensions.issubset(IMAGE_TYPES)
+                    or path.suffix.casefold() not in extensions):
                 return False
         elif word not in text:
             return False
