@@ -196,6 +196,30 @@ class ExcludedGalleryTermsTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(image, '-001'))
 
 
+class ExcludedStructuredGalleryFilterTests(unittest.TestCase):
+    def test_excluding_formats_does_not_exclude_every_image(self):
+        root = Path('gallery')
+        png = root / 'Эрза' / '001.png'
+        gif = root / 'Эрза' / '002.gif'
+        self.assertTrue(gallery_matches_query(png, 'эрза -ext:gif', root))
+        self.assertFalse(gallery_matches_query(gif, 'эрза -ext:gif', root))
+        self.assertFalse(gallery_matches_query(png, '-ext:png,jpg', root))
+        self.assertFalse(gallery_matches_query(png, '-ext:exe', root))
+        self.assertFalse(gallery_matches_query(png, '-ext:', root))
+
+    def test_excluding_specific_folder_or_filename(self):
+        root = Path('gallery')
+        final = root / 'Эрза' / 'Финал' / '001.png'
+        draft = root / 'Эрза' / 'Черновик' / '001.png'
+        self.assertTrue(gallery_matches_query(final, 'эрза -folder:черновик', root))
+        self.assertFalse(gallery_matches_query(draft, 'эрза -folder:черновик', root))
+        self.assertFalse(gallery_matches_query(final, '-name:001', root))
+        self.assertTrue(gallery_matches_query(final, '-name:002', root))
+        self.assertFalse(gallery_matches_query(final, '-folder:', root))
+        self.assertFalse(gallery_matches_query(final, '-name:', root))
+        self.assertFalse(gallery_matches_query(final, '-folder:эрза'))
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
