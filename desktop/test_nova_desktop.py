@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images, natural_gallery_key
+from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -307,6 +307,32 @@ class GalleryRescanTests(unittest.TestCase):
             self.assertEqual(collect_gallery_images(root), [second])
             self.assertEqual(second.read_bytes(), b'second')
 
+
+
+class GalleryPreviewSafetyTests(unittest.TestCase):
+    def test_preview_checks_current_file_size_and_missing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            photo = root / "photo.png"
+            photo.write_bytes(b"1234")
+            self.assertTrue(is_safe_gallery_preview(photo, max_bytes=4))
+            self.assertFalse(is_safe_gallery_preview(photo, max_bytes=3))
+            self.assertFalse(is_safe_gallery_preview(photo, max_bytes=0))
+            photo.unlink()
+            self.assertFalse(is_safe_gallery_preview(photo, max_bytes=4))
+
+    def test_preview_refuses_symlink_replaced_after_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "private.png"
+            target.write_bytes(b"image")
+            link = root / "gallery.png"
+            try:
+                link.symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest("Creating symlinks is not permitted on this runner")
+            self.assertFalse(is_safe_gallery_preview(link))
+            self.assertEqual(target.read_bytes(), b"image")
 
 if __name__ == "__main__":
     unittest.main()
