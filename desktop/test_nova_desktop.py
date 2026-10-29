@@ -2,8 +2,9 @@
 import unittest
 import random
 from collections import Counter
+from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image
+from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -68,6 +69,15 @@ class RandomGalleryTests(unittest.TestCase):
     def test_empty_or_small_gallery(self):
         self.assertEqual(random_candidate_indices(0), [])
         self.assertEqual(sorted(random_candidate_indices(3, rng=random.Random(1))), [0, 1, 2])
+
+
+class GalleryFilterTests(unittest.TestCase):
+    def test_case_insensitive_filename_filter(self):
+        image = Path('Моя_Эрза.PNG')
+        self.assertTrue(gallery_matches_query(image, 'эрза'))
+        self.assertTrue(gallery_matches_query(image, '  МОЯ  '))
+        self.assertTrue(gallery_matches_query(image, ''))
+        self.assertFalse(gallery_matches_query(image, 'Нами'))
 
 
 class GalleryImageSizeTests(unittest.TestCase):
