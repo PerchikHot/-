@@ -86,6 +86,17 @@ class GalleryFilterTests(unittest.TestCase):
         self.assertTrue(gallery_matches_query(image, '2026 ЭРЗА'))
         self.assertFalse(gallery_matches_query(image, 'эрза зима'))
 
+    def test_search_matches_nested_folder_and_filename(self):
+        root = Path('gallery')
+        image = root / 'Эрза' / 'Лето' / '001.PNG'
+        self.assertTrue(gallery_matches_query(image, 'эрза 001', root))
+        self.assertTrue(gallery_matches_query(image, 'лето эрза', root))
+        self.assertFalse(gallery_matches_query(image, 'зима', root))
+        # Without a gallery root, do not accidentally search absolute paths.
+        self.assertFalse(gallery_matches_query(image, 'эрза'))
+        self.assertFalse(gallery_matches_query(image, 'other', Path('elsewhere')))
+
+
 
 class NestedGalleryTests(unittest.TestCase):
     def test_scans_nested_folders_without_touching_images(self):
