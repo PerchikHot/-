@@ -297,7 +297,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  обычные слова",
+        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  name:001  •  слова",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
