@@ -506,6 +506,11 @@ class NovaDesktop(tk.Tk):
                 or not self.visible_gallery_indices):
             self._stop_slideshow()
             return
+        # Do not decode new photos while the preview window is minimized.
+        # Keep the slideshow enabled so it resumes on the next tick.
+        if self.state() == "iconic":
+            self._slideshow_job = self.after(5000, self._slideshow_tick)
+            return
         # Reuse the no-repeat selector and its file safety checks.
         self._random_image()
         self._slideshow_job = self.after(5000, self._slideshow_tick)
