@@ -78,6 +78,13 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     text = searchable.casefold()
     folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
     for word in query.casefold().split():
+        # A leading minus excludes matching images or folders, e.g.
+        # 'эрза -черновик'. Reject a lone minus instead of matching all.
+        if word.startswith('-'):
+            excluded = word[1:]
+            if not excluded or excluded in text:
+                return False
+            continue
         if word.startswith('folder:'):
             # Restrict a filter to folder names, not a matching filename.
             if not word[7:] or word[7:] not in folder_text:
@@ -297,7 +304,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  name:001  •  слова",
+        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  name:001  •  -черновик",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
