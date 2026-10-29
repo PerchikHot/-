@@ -8,6 +8,39 @@ from pathlib import Path
 from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+class GallerySlideshowTests(unittest.TestCase):
+    def test_slideshow_uses_non_repeating_gallery_and_stops_outside_tab(self):
+        from nova_desktop import NovaDesktop
+
+        class FakeGallery:
+            slideshow_enabled = True
+            current_page = "gallery"
+            visible_gallery_indices = [0, 1]
+            _slideshow_job = None
+            shown = 0
+            scheduled_delay = None
+
+            def _random_image(self):
+                self.shown += 1
+
+            def after(self, delay, _callback):
+                self.scheduled_delay = delay
+                return "pending-timer"
+
+            def _stop_slideshow(self):
+                self.slideshow_enabled = False
+
+        fake = FakeGallery()
+        NovaDesktop._slideshow_tick(fake)
+        self.assertEqual(fake.shown, 1)
+        self.assertEqual(fake.scheduled_delay, 5000)
+        self.assertEqual(fake._slideshow_job, "pending-timer")
+        fake.current_page = "memory"
+        NovaDesktop._slideshow_tick(fake)
+        self.assertFalse(fake.slideshow_enabled)
+        self.assertEqual(fake.shown, 1)
+
+
 class GalleryNavigationTests(unittest.TestCase):
     def test_wraps_and_handles_empty_gallery(self):
         from nova_desktop import gallery_step_index

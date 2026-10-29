@@ -245,6 +245,8 @@ class NovaDesktop(tk.Tk):
         self.gallery_photo = None
         self._previewed_path: Path | None = None
         self._pending_hide = None
+        self._slideshow_job = None
+        self.slideshow_enabled = False
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
 
@@ -271,6 +273,8 @@ class NovaDesktop(tk.Tk):
         self._show("memory")
 
     def _show(self, page: str):
+        # Cancel the timer before destroying the gallery widgets.
+        self._stop_slideshow()
         self.current_page = page
         # A delayed flip must never update widgets after switching tabs.
         if self._pending_hide is not None:
@@ -365,6 +369,8 @@ class NovaDesktop(tk.Tk):
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
         self._button(toolbar, "Обновить список", self._reload_folder).pack(side="left", padx=4)
         self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
+        self.slideshow_button = self._button(toolbar, "▶ Слайд-шоу", self._toggle_slideshow)
+        self.slideshow_button.pack(side="left", padx=4)
         self._button(toolbar, "◀", lambda: self._step_gallery(-1)).pack(side="left", padx=2)
         self._button(toolbar, "▶", lambda: self._step_gallery(1)).pack(side="left", padx=2)
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
@@ -435,6 +441,8 @@ class NovaDesktop(tk.Tk):
             index for index, path in enumerate(self.gallery_files)
             if gallery_matches_query(path, self.gallery_filter.get(), self.gallery_root)
         ]
+        if not self.visible_gallery_indices and self.slideshow_enabled:
+            self._stop_slideshow()
         # A removed or newly excluded image must not remain in the preview.
         visible_paths = [self.gallery_files[i] for i in self.visible_gallery_indices]
         if self._previewed_path is not None and not gallery_preview_is_visible(
@@ -471,6 +479,36 @@ class NovaDesktop(tk.Tk):
         self.gallery_list.see(target)
         self._selected_image()
         return "break"
+
+    def _stop_slideshow(self):
+        if self._slideshow_job is not None:
+            self.after_cancel(self._slideshow_job)
+            self._slideshow_job = None
+        self.slideshow_enabled = False
+        button = getattr(self, "slideshow_button", None)
+        if button is not None and button.winfo_exists():
+            button.config(text="▶ Слайд-шоу")
+
+    def _toggle_slideshow(self):
+        if self.slideshow_enabled:
+            self._stop_slideshow()
+            return
+        if not self.visible_gallery_indices:
+            self.gallery_status.config(text="Нет изображений для слайд-шоу")
+            return
+        self.slideshow_enabled = True
+        self.slideshow_button.config(text="■ Стоп")
+        self._slideshow_tick()
+
+    def _slideshow_tick(self):
+        self._slideshow_job = None
+        if (not self.slideshow_enabled or self.current_page != "gallery"
+                or not self.visible_gallery_indices):
+            self._stop_slideshow()
+            return
+        # Reuse the no-repeat selector and its file safety checks.
+        self._random_image()
+        self._slideshow_job = self.after(5000, self._slideshow_tick)
 
     def _random_image(self):
         if not self.gallery_files:
