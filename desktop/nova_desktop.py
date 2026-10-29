@@ -47,6 +47,15 @@ def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     return images
 
 
+def gallery_step_index(current: int | None, count: int, direction: int) -> int | None:
+    """Navigate filtered images with wraparound; handle empty selections."""
+    if count <= 0 or direction not in (-1, 1):
+        return None
+    if current is None or not 0 <= current < count:
+        return 0 if direction > 0 else count - 1
+    return (current + direction) % count
+
+
 def gallery_preview_is_visible(previewed: Path | None, visible: list[Path]) -> bool:
     """Keep a preview only while its file belongs to the filtered gallery."""
     return previewed is not None and previewed in visible
@@ -346,6 +355,8 @@ class NovaDesktop(tk.Tk):
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
         self._button(toolbar, "Обновить список", self._reload_folder).pack(side="left", padx=4)
         self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
+        self._button(toolbar, "◀", lambda: self._step_gallery(-1)).pack(side="left", padx=2)
+        self._button(toolbar, "▶", lambda: self._step_gallery(1)).pack(side="left", padx=2)
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
                               bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
         filter_box.pack(side="left", padx=6, ipady=8)
@@ -362,12 +373,14 @@ class NovaDesktop(tk.Tk):
         )
         self.gallery_list.pack(side="left", fill="y", padx=(0, 10))
         self.gallery_list.bind("<<ListboxSelect>>", self._selected_image)
+        self.gallery_list.bind("<Left>", lambda _event: self._step_gallery(-1))
+        self.gallery_list.bind("<Right>", lambda _event: self._step_gallery(1))
         self.gallery_preview = tk.Label(
             panel, bg=PANEL, fg=TEXT, text="Изображения остаются на компьютере",
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
@@ -430,6 +443,19 @@ class NovaDesktop(tk.Tk):
         selection = self.gallery_list.curselection()
         if selection:
             self._open_image(self.gallery_files[self.visible_gallery_indices[selection[0]]])
+
+    def _step_gallery(self, direction: int):
+        """Move through the filtered list without touching the source files."""
+        selection = self.gallery_list.curselection()
+        current = selection[0] if selection else None
+        target = gallery_step_index(current, len(self.visible_gallery_indices), direction)
+        if target is None:
+            return "break"
+        self.gallery_list.selection_clear(0, tk.END)
+        self.gallery_list.selection_set(target)
+        self.gallery_list.see(target)
+        self._selected_image()
+        return "break"
 
     def _random_image(self):
         if not self.gallery_files:
