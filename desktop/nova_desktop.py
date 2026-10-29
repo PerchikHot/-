@@ -45,10 +45,16 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
     return (rng or random).sample(range(count), min(count, limit))
 
 
-def gallery_matches_query(path: Path, query: str) -> bool:
-    """Match all filename search words in any order; never reads image contents."""
-    filename = path.name.casefold()
-    return all(word in filename for word in query.casefold().split())
+def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> bool:
+    """Search filenames and relative folder names without reading image data."""
+    # A folder named after a character should be searchable even when
+    # the files inside are named 001.png, 002.png, etc.
+    try:
+        searchable = str(path.relative_to(root)) if root is not None else path.name
+    except ValueError:
+        searchable = path.name
+    text = searchable.casefold()
+    return all(word in text for word in query.casefold().split())
 
 
 def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) -> bool:
@@ -272,7 +278,7 @@ class NovaDesktop(tk.Tk):
         self.gallery_list.delete(0, tk.END)
         self.visible_gallery_indices = [
             index for index, path in enumerate(self.gallery_files)
-            if gallery_matches_query(path, self.gallery_filter.get())
+            if gallery_matches_query(path, self.gallery_filter.get(), self.gallery_root)
         ]
         for index in self.visible_gallery_indices:
             path = self.gallery_files[index]
