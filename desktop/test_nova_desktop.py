@@ -8,6 +8,16 @@ from pathlib import Path
 from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+class GalleryShortcutTests(unittest.TestCase):
+    def test_ctrl_f_opens_search_and_escape_clears_it(self):
+        from nova_desktop import gallery_shortcut_action
+        self.assertEqual(gallery_shortcut_action("f", 0x4), "focus")
+        self.assertEqual(gallery_shortcut_action("F", 0x5), "focus")
+        self.assertEqual(gallery_shortcut_action("Escape", 0), "clear")
+        self.assertIsNone(gallery_shortcut_action("f", 0))
+        self.assertIsNone(gallery_shortcut_action("g", 0x4))
+
+
 class MemoryGameTests(unittest.TestCase):
     def test_deck_contains_eight_pairs(self):
         game = MemoryGame(seed=1)
