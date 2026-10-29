@@ -44,6 +44,20 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
         return []
     return (rng or random).sample(range(count), min(count, limit))
 
+def unseen_candidate_indices(count: int, seen: set[int], limit: int = 12, rng=None) -> list[int]:
+    """Avoid repeats until the entire filtered gallery has been attempted.
+
+    Failed images count as attempted, so broken files do not monopolize
+    the random button. A new cycle begins only after all have been tried.
+    """
+    if count <= 0 or limit <= 0:
+        return []
+    remaining = [i for i in range(count) if i not in seen]
+    if not remaining:
+        seen.clear()
+        remaining = list(range(count))
+    return (rng or random).sample(remaining, min(limit, len(remaining)))
+
 
 def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> bool:
     """Search filenames and relative folder names without reading image data."""
@@ -120,6 +134,7 @@ class NovaDesktop(tk.Tk):
         self.gallery_files: list[Path] = []
         self.gallery_root: Path | None = None
         self.visible_gallery_indices: list[int] = []
+        self._seen_random_indices: set[int] = set()
         self.gallery_filter = tk.StringVar()
         self.gallery_photo = None
         self._pending_hide = None
@@ -231,7 +246,7 @@ class NovaDesktop(tk.Tk):
         toolbar = tk.Frame(self.content, bg=BACKGROUND)
         toolbar.pack(fill="x", pady=8)
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
-        self._button(toolbar, "Случайное фото", self._random_image).pack(side="left", padx=4)
+        self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
                               bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
         filter_box.pack(side="left", padx=6, ipady=8)
@@ -276,6 +291,8 @@ class NovaDesktop(tk.Tk):
         if not hasattr(self, "gallery_list"):
             return
         self.gallery_list.delete(0, tk.END)
+        # A different filter/folder starts a fresh random shuffle.
+        self._seen_random_indices.clear()
         self.visible_gallery_indices = [
             index for index, path in enumerate(self.gallery_files)
             if gallery_matches_query(path, self.gallery_filter.get(), self.gallery_root)
@@ -299,12 +316,17 @@ class NovaDesktop(tk.Tk):
         if not self.visible_gallery_indices:
             self.gallery_status.config(text="Нет изображений по запросу")
             return
-        for visible_index in random_candidate_indices(len(self.visible_gallery_indices)):
+        for visible_index in unseen_candidate_indices(
+                len(self.visible_gallery_indices), self._seen_random_indices):
+            self._seen_random_indices.add(visible_index)
             index = self.visible_gallery_indices[visible_index]
             if self._open_image(self.gallery_files[index]):
                 self.gallery_list.selection_clear(0, tk.END)
                 self.gallery_list.selection_set(visible_index)
                 self.gallery_list.see(visible_index)
+                self.gallery_status.config(
+                    text=f"Без повторов: {len(self._seen_random_indices)} / {len(self.visible_gallery_indices)}"
+                )
                 return
         self.gallery_status.config(text="Не удалось открыть доступные изображения")
 
