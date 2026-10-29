@@ -246,6 +246,7 @@ class NovaDesktop(tk.Tk):
         toolbar = tk.Frame(self.content, bg=BACKGROUND)
         toolbar.pack(fill="x", pady=8)
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
+        self._button(toolbar, "Обновить список", self._reload_folder).pack(side="left", padx=4)
         self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
                               bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
@@ -285,6 +286,19 @@ class NovaDesktop(tk.Tk):
             return
         self.gallery_root = root
         self.gallery_files = files
+        self._refresh_gallery()
+
+    def _reload_folder(self):
+        """Pick up new/deleted local photos without reselecting the directory."""
+        if self.gallery_root is None:
+            self.gallery_status.config(text="Сначала выбери папку с изображениями")
+            return
+        try:
+            updated = collect_gallery_images(self.gallery_root)
+        except OSError as exc:
+            messagebox.showerror("Ошибка обновления", str(exc))
+            return
+        self.gallery_files = updated
         self._refresh_gallery()
 
     def _refresh_gallery(self):
@@ -328,7 +342,7 @@ class NovaDesktop(tk.Tk):
                     text=f"Без повторов: {len(self._seen_random_indices)} / {len(self.visible_gallery_indices)}"
                 )
                 return
-        self.gallery_status.config(text="Не удалось открыть доступные изображения")
+        self.gallery_status.config(text="Не удалось открыть проверенные изображения — попробуй ещё раз")
 
     def _open_image(self, path: Path):
         try:

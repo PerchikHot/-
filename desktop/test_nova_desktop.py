@@ -160,5 +160,21 @@ class GalleryImageSizeTests(unittest.TestCase):
         self.assertTrue(is_oversized_image(-1, 100))
 
 
+
+class GalleryRescanTests(unittest.TestCase):
+    def test_rescan_detects_new_and_removed_files_without_changing_them(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / '001.png'
+            first.write_bytes(b'first')
+            self.assertEqual(collect_gallery_images(root), [first])
+            second = root / '002.png'
+            second.write_bytes(b'second')
+            self.assertEqual(collect_gallery_images(root), [first, second])
+            first.unlink()
+            self.assertEqual(collect_gallery_images(root), [second])
+            self.assertEqual(second.read_bytes(), b'second')
+
+
 if __name__ == "__main__":
     unittest.main()
