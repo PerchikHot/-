@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images
+from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -123,6 +123,21 @@ class GalleryFilterTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(image, 'эрза'))
         self.assertFalse(gallery_matches_query(image, 'other', Path('elsewhere')))
 
+
+
+class NaturalGalleryOrderTests(unittest.TestCase):
+    def test_numbered_files_are_sorted_numerically(self):
+        self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
+                         ['1.PNG', '2.png', '10.png'])
+
+    def test_scanner_orders_nested_numbered_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for folder in ('10', '2', '1'):
+                (root / folder).mkdir()
+                (root / folder / '1.png').write_bytes(b'image')
+            self.assertEqual([p.parent.name for p in collect_gallery_images(root)],
+                             ['1', '2', '10'])
 
 
 class NestedGalleryTests(unittest.TestCase):
