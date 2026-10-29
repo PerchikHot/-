@@ -6,6 +6,7 @@ User images are read on demand and never uploaded or modified.
 from __future__ import annotations
 
 import random
+import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -18,6 +19,23 @@ ACCENT = "#58c9ff"
 TEXT = "#e7f0ff"
 SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+
+
+def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
+    """Include nested folders without following links or indexing endlessly."""
+    if max_images <= 0 or not root.is_dir():
+        return []
+    images: list[Path] = []
+    for current, dirs, files in os.walk(root, followlinks=False):
+        # Do not follow junctions/symlinks to unrelated or cyclic directories.
+        dirs[:] = sorted(d for d in dirs if not (Path(current) / d).is_symlink())
+        for name in sorted(files, key=str.casefold):
+            path = Path(current) / name
+            if path.suffix.lower() in IMAGE_TYPES and not path.is_symlink() and path.is_file():
+                images.append(path)
+                if len(images) >= max_images:
+                    return images
+    return images
 
 
 def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]:
@@ -94,6 +112,7 @@ class NovaDesktop(tk.Tk):
         self.game = MemoryGame()
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
+        self.gallery_root: Path | None = None
         self.visible_gallery_indices: list[int] = []
         self.gallery_filter = tk.StringVar()
         self.gallery_photo = None
@@ -239,14 +258,12 @@ class NovaDesktop(tk.Tk):
             return
         root = Path(folder)
         try:
-            self.gallery_files = sorted(
-                (p for p in root.iterdir()
-                 if p.is_file() and p.suffix.lower() in IMAGE_TYPES),
-                key=lambda p: p.name.lower(),
-            )
+            files = collect_gallery_images(root)
         except OSError as exc:
             messagebox.showerror("Ошибка", str(exc))
             return
+        self.gallery_root = root
+        self.gallery_files = files
         self._refresh_gallery()
 
     def _refresh_gallery(self):
@@ -258,7 +275,8 @@ class NovaDesktop(tk.Tk):
             if gallery_matches_query(path, self.gallery_filter.get())
         ]
         for index in self.visible_gallery_indices:
-            self.gallery_list.insert(tk.END, self.gallery_files[index].name)
+            path = self.gallery_files[index]
+            self.gallery_list.insert(tk.END, str(path.relative_to(self.gallery_root)) if self.gallery_root else path.name)
         self.gallery_status.config(
             text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
         )
