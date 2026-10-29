@@ -28,8 +28,9 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
 
 
 def gallery_matches_query(path: Path, query: str) -> bool:
-    """Case-insensitive filename filter; never reads image contents."""
-    return query.strip().casefold() in path.name.casefold()
+    """Match all filename search words in any order; never reads image contents."""
+    filename = path.name.casefold()
+    return all(word in filename for word in query.casefold().split())
 
 
 def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) -> bool:
@@ -210,6 +211,7 @@ class NovaDesktop(tk.Tk):
                               bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
         filter_box.pack(side="left", padx=6, ipady=8)
         filter_box.bind("<KeyRelease>", lambda _event: self._refresh_gallery())
+        self._button(toolbar, "Очистить", self._clear_gallery_filter).pack(side="left", padx=4)
         self.gallery_status = self._label(toolbar, "Выбери папку с изображениями", 12)
         self.gallery_status.pack(side="left", padx=15)
         panel = tk.Frame(self.content, bg=BACKGROUND)
@@ -225,6 +227,10 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
+        self._refresh_gallery()
+
+    def _clear_gallery_filter(self):
+        self.gallery_filter.set("")
         self._refresh_gallery()
 
     def _choose_folder(self):
