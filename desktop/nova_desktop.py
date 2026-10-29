@@ -82,6 +82,10 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
             # Restrict a filter to folder names, not a matching filename.
             if not word[7:] or word[7:] not in folder_text:
                 return False
+        elif word.startswith('name:'):
+            # Search the filename only; character folders are excluded.
+            if not word[5:] or word[5:] not in path.name.casefold():
+                return False
         elif word.startswith('ext:'):
             # Accept a comma-separated set of formats, e.g. ext:png,jpg,
             # without scanning or decoding any image content.
