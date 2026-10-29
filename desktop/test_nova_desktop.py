@@ -177,6 +177,25 @@ class MultiExtensionGalleryFilterTests(unittest.TestCase):
             self.assertFalse(gallery_matches_query(image, query), query)
 
 
+class ExcludedGalleryTermsTests(unittest.TestCase):
+    def test_exclusion_can_remove_unwanted_variants_without_hiding_character(self):
+        root = Path('gallery')
+        final = root / 'Эрза' / 'Лето' / '001.png'
+        draft = root / 'Эрза' / 'Черновик' / '002.png'
+        self.assertTrue(gallery_matches_query(final, 'эрза -черновик', root))
+        self.assertFalse(gallery_matches_query(draft, 'эрза -черновик', root))
+        self.assertFalse(gallery_matches_query(final, '-001', root))
+        self.assertTrue(gallery_matches_query(final, '-002', root))
+        self.assertFalse(gallery_matches_query(final, '-', root))
+        self.assertFalse(gallery_matches_query(final, 'эрза -', root))
+        self.assertTrue(gallery_matches_query(final, 'эрза', root))
+
+    def test_exclusion_without_root_does_not_search_parent_paths(self):
+        image = Path('Черновик') / '001.png'
+        self.assertTrue(gallery_matches_query(image, '-черновик'))
+        self.assertFalse(gallery_matches_query(image, '-001'))
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
