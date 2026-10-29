@@ -125,6 +125,17 @@ class GalleryFilterTests(unittest.TestCase):
 
 
 
+class ExtensionGalleryFilterTests(unittest.TestCase):
+    def test_filters_by_format_and_character(self):
+        root = Path('gallery')
+        image = root / 'Эрза' / '001.GIF'
+        self.assertTrue(gallery_matches_query(image, 'эрза ext:gif', root))
+        self.assertTrue(gallery_matches_query(image, 'ext:.gif 001', root))
+        self.assertFalse(gallery_matches_query(image, 'ext:png', root))
+        self.assertFalse(gallery_matches_query(image, 'ext:exe', root))
+        self.assertFalse(gallery_matches_query(image, 'ext:', root))
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
