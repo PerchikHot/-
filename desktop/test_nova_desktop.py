@@ -136,6 +136,19 @@ class ExtensionGalleryFilterTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(image, 'ext:', root))
 
 
+class MultiExtensionGalleryFilterTests(unittest.TestCase):
+    def test_multiple_extensions_can_be_selected_with_one_query(self):
+        root = Path('gallery')
+        self.assertTrue(gallery_matches_query(root / 'Эрза' / '001.PNG', 'эрза ext:png,jpg', root))
+        self.assertTrue(gallery_matches_query(root / 'Эрза' / '002.JPG', 'ext:.png,.jpg', root))
+        self.assertFalse(gallery_matches_query(root / 'Эрза' / '003.GIF', 'ext:png,jpg', root))
+
+    def test_malformed_or_unsupported_formats_are_rejected(self):
+        image = Path('001.png')
+        for query in ('ext:', 'ext:png,', 'ext:,jpg', 'ext:png,,jpg', 'ext:exe,png'):
+            self.assertFalse(gallery_matches_query(image, query), query)
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
