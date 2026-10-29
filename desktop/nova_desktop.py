@@ -76,8 +76,13 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     except ValueError:
         searchable = path.name
     text = searchable.casefold()
+    folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
     for word in query.casefold().split():
-        if word.startswith('ext:'):
+        if word.startswith('folder:'):
+            # Restrict a filter to folder names, not a matching filename.
+            if not word[7:] or word[7:] not in folder_text:
+                return False
+        elif word.startswith('ext:'):
             # Accept a comma-separated set of formats, e.g. ext:png,jpg,
             # without scanning or decoding any image content.
             formats = word[4:].split(',')
@@ -288,6 +293,8 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
+        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  обычные слова",
+                 bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
     def _clear_gallery_filter(self):
