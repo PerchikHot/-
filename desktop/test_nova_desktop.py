@@ -63,6 +63,9 @@ class GallerySlideshowTests(unittest.TestCase):
             def _random_image(self):
                 self.shown += 1
 
+            def _slideshow_tick(self):
+                return NovaDesktop._slideshow_tick(self)
+
             def after(self, delay, callback):
                 self.delay = delay
                 return "scheduled"
