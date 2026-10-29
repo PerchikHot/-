@@ -32,6 +32,17 @@ class GalleryPreviewVisibilityTests(unittest.TestCase):
         self.assertFalse(gallery_preview_is_visible(None, [first]))
 
 
+class GallerySelectionRefreshTests(unittest.TestCase):
+    def test_preserves_selected_image_after_rescan_or_filter(self):
+        from nova_desktop import gallery_preview_index
+        first = Path('gallery/first.png')
+        second = Path('gallery/second.png')
+        self.assertEqual(gallery_preview_index(second, [first, second]), 1)
+        self.assertEqual(gallery_preview_index(second, [second, first]), 0)
+        self.assertIsNone(gallery_preview_index(second, [first]))
+        self.assertIsNone(gallery_preview_index(None, [first]))
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
