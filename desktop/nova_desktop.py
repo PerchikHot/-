@@ -382,6 +382,8 @@ class NovaDesktop(tk.Tk):
         self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
         self.slideshow_button = self._button(toolbar, "▶ Слайд-шоу", self._toggle_slideshow)
         self.slideshow_button.pack(side="left", padx=4)
+        self.slideshow_speed_button = self._button(toolbar, "5с", self._cycle_slideshow_speed)
+        self.slideshow_speed_button.pack(side="left", padx=2)
         self._button(toolbar, "◀", lambda: self._step_gallery(-1)).pack(side="left", padx=2)
         self._button(toolbar, "▶", lambda: self._step_gallery(1)).pack(side="left", padx=2)
         filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
