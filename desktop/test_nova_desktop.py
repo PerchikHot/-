@@ -1,10 +1,11 @@
 """Headless tests for the Nova Windows preview state machine."""
 import unittest
 import random
+import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query
+from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -84,6 +85,30 @@ class GalleryFilterTests(unittest.TestCase):
         self.assertTrue(gallery_matches_query(image, 'эрза лето'))
         self.assertTrue(gallery_matches_query(image, '2026 ЭРЗА'))
         self.assertFalse(gallery_matches_query(image, 'эрза зима'))
+
+
+class NestedGalleryTests(unittest.TestCase):
+    def test_scans_nested_folders_without_touching_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sub" / "deep").mkdir(parents=True)
+            first = root / "top.PNG"
+            second = root / "sub" / "deep" / "photo.webp"
+            first.write_bytes(b"one")
+            second.write_bytes(b"two")
+            (root / "sub" / "notes.txt").write_text("ignore")
+            self.assertEqual(set(collect_gallery_images(root)), {first, second})
+            self.assertEqual(first.read_bytes(), b"one")
+            self.assertEqual(second.read_bytes(), b"two")
+
+    def test_caps_scanned_files_and_handles_missing_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for index in range(5):
+                (root / f"photo_{index}.jpg").write_bytes(b"image")
+            self.assertEqual(len(collect_gallery_images(root, max_images=3)), 3)
+            self.assertEqual(collect_gallery_images(root, max_images=0), [])
+            self.assertEqual(collect_gallery_images(root / "missing"), [])
 
 
 class GalleryImageSizeTests(unittest.TestCase):
