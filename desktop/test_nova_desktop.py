@@ -125,6 +125,23 @@ class GalleryFilterTests(unittest.TestCase):
 
 
 
+class FolderGalleryFilterTests(unittest.TestCase):
+    def test_folder_filter_matches_only_relative_directory(self):
+        root = Path('gallery')
+        image = root / 'Эрза' / 'Лето' / '001.PNG'
+        self.assertTrue(gallery_matches_query(image, 'folder:эрза ext:png', root))
+        self.assertTrue(gallery_matches_query(image, 'folder:лето 001', root))
+        self.assertFalse(gallery_matches_query(image, 'folder:001', root))
+        self.assertFalse(gallery_matches_query(image, 'folder:', root))
+        self.assertFalse(gallery_matches_query(image, 'folder:эрза'))
+
+    def test_folder_filter_does_not_match_filename(self):
+        root = Path('gallery')
+        image = root / 'Нами' / 'Эрза.png'
+        self.assertFalse(gallery_matches_query(image, 'folder:эрза', root))
+        self.assertTrue(gallery_matches_query(image, 'folder:нами', root))
+
+
 class ExtensionGalleryFilterTests(unittest.TestCase):
     def test_filters_by_format_and_character(self):
         root = Path('gallery')
