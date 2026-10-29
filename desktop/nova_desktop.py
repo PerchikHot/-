@@ -139,6 +139,15 @@ def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) ->
     """Reject extreme or malformed image dimensions before full decoding."""
     return width <= 0 or height <= 0 or width * height > max_pixels
 
+def is_safe_gallery_preview(path: Path, max_bytes: int = 128 * 1024 * 1024) -> bool:
+    """Recheck files before opening: a scanned file may have been replaced.
+
+    Avoid reading symlink targets outside the chosen folder or oversized
+    files that would consume excessive memory. This never modifies photos.
+    """
+    return (max_bytes > 0 and not path.is_symlink() and path.is_file()
+            and path.stat().st_size <= max_bytes)
+
 
 def memory_key_to_index(key: str) -> int | None:
     """Map 1–9 and A–G to the sixteen cards, without touching gallery keys."""
@@ -412,6 +421,8 @@ class NovaDesktop(tk.Tk):
 
     def _open_image(self, path: Path):
         try:
+            if not is_safe_gallery_preview(path):
+                raise ValueError("Файл слишком большой, отсутствует или стал ссылкой")
             with Image.open(path) as source:
                 if is_oversized_image(*source.size):
                     raise ValueError("Изображение слишком большое для предпросмотра")
