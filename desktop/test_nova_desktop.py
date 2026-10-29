@@ -8,6 +8,17 @@ from pathlib import Path
 from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+class GalleryPreviewVisibilityTests(unittest.TestCase):
+    def test_preview_disappears_when_filter_or_rescan_excludes_file(self):
+        from nova_desktop import gallery_preview_is_visible
+        first = Path('gallery/first.png')
+        second = Path('gallery/second.png')
+        self.assertTrue(gallery_preview_is_visible(first, [first, second]))
+        self.assertFalse(gallery_preview_is_visible(first, [second]))
+        self.assertFalse(gallery_preview_is_visible(first, []))
+        self.assertFalse(gallery_preview_is_visible(None, [first]))
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
