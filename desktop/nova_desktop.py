@@ -78,6 +78,27 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     text = searchable.casefold()
     folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
     for word in query.casefold().split():
+        # Exclude a format explicitly. Plain '-ext:gif' cannot be treated as
+        # text because the filename normally contains no 'ext:' substring.
+        if word.startswith('-ext:'):
+            formats = word[5:].split(',')
+            extensions = {f".{part.lstrip('.')}" for part in formats}
+            if (any(not part or part == '.' for part in formats)
+                    or not extensions.issubset(IMAGE_TYPES)):
+                return False
+            if path.suffix.casefold() in extensions:
+                return False
+            continue
+        if word.startswith('-folder:'):
+            excluded_folder = word[8:]
+            if not excluded_folder or root is None or excluded_folder in folder_text:
+                return False
+            continue
+        if word.startswith('-name:'):
+            excluded_name = word[6:]
+            if not excluded_name or excluded_name in path.name.casefold():
+                return False
+            continue
         # A leading minus excludes matching images or folders, e.g.
         # 'эрза -черновик'. Reject a lone minus instead of matching all.
         if word.startswith('-'):
