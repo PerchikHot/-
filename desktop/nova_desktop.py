@@ -237,6 +237,10 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "clear"
     if keysym == "F5":
         return "refresh"
+    if keysym == "F6":
+        return "toggle_slideshow"
+    if keysym == "F7":
+        return "cycle_speed"
     return None
 
 
@@ -362,6 +366,12 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "refresh":
             self._reload_folder()
             return "break"
+        if self.current_page == "gallery" and action == "toggle_slideshow":
+            self._toggle_slideshow()
+            return "break"
+        if self.current_page == "gallery" and action == "cycle_speed":
+            self._cycle_slideshow_speed()
+            return "break"
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
@@ -414,7 +424,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
