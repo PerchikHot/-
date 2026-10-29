@@ -27,6 +27,11 @@ def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]
     return (rng or random).sample(range(count), min(count, limit))
 
 
+def gallery_matches_query(path: Path, query: str) -> bool:
+    """Case-insensitive filename filter; never reads image contents."""
+    return query.strip().casefold() in path.name.casefold()
+
+
 def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) -> bool:
     """Reject extreme or malformed image dimensions before full decoding."""
     return width <= 0 or height <= 0 or width * height > max_pixels
@@ -88,6 +93,8 @@ class NovaDesktop(tk.Tk):
         self.game = MemoryGame()
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
+        self.visible_gallery_indices: list[int] = []
+        self.gallery_filter = tk.StringVar()
         self.gallery_photo = None
         self._pending_hide = None
         self._build()
@@ -199,6 +206,10 @@ class NovaDesktop(tk.Tk):
         toolbar.pack(fill="x", pady=8)
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
         self._button(toolbar, "Случайное фото", self._random_image).pack(side="left", padx=4)
+        filter_box = tk.Entry(toolbar, textvariable=self.gallery_filter, width=20,
+                              bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat")
+        filter_box.pack(side="left", padx=6, ipady=8)
+        filter_box.bind("<KeyRelease>", lambda _event: self._refresh_gallery())
         self.gallery_status = self._label(toolbar, "Выбери папку с изображениями", 12)
         self.gallery_status.pack(side="left", padx=15)
         panel = tk.Frame(self.content, bg=BACKGROUND)
@@ -236,24 +247,34 @@ class NovaDesktop(tk.Tk):
         if not hasattr(self, "gallery_list"):
             return
         self.gallery_list.delete(0, tk.END)
-        for path in self.gallery_files:
-            self.gallery_list.insert(tk.END, path.name)
-        self.gallery_status.config(text=f"Изображений: {len(self.gallery_files)}")
+        self.visible_gallery_indices = [
+            index for index, path in enumerate(self.gallery_files)
+            if gallery_matches_query(path, self.gallery_filter.get())
+        ]
+        for index in self.visible_gallery_indices:
+            self.gallery_list.insert(tk.END, self.gallery_files[index].name)
+        self.gallery_status.config(
+            text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
+        )
 
     def _selected_image(self, _event=None):
         selection = self.gallery_list.curselection()
         if selection:
-            self._open_image(self.gallery_files[selection[0]])
+            self._open_image(self.gallery_files[self.visible_gallery_indices[selection[0]]])
 
     def _random_image(self):
         if not self.gallery_files:
             messagebox.showinfo("Галерея", "Сначала выбери папку с изображениями.")
             return
-        for index in random_candidate_indices(len(self.gallery_files)):
+        if not self.visible_gallery_indices:
+            self.gallery_status.config(text="Нет изображений по запросу")
+            return
+        for visible_index in random_candidate_indices(len(self.visible_gallery_indices)):
+            index = self.visible_gallery_indices[visible_index]
             if self._open_image(self.gallery_files[index]):
                 self.gallery_list.selection_clear(0, tk.END)
-                self.gallery_list.selection_set(index)
-                self.gallery_list.see(index)
+                self.gallery_list.selection_set(visible_index)
+                self.gallery_list.see(visible_index)
                 return
         self.gallery_status.config(text="Не удалось открыть доступные изображения")
 
