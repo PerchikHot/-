@@ -19,6 +19,10 @@ class GallerySlideshowTests(unittest.TestCase):
             _slideshow_job = None
             shown = 0
             scheduled_delay = None
+            window_state = "normal"
+
+            def state(self):
+                return self.window_state
 
             def _random_image(self):
                 self.shown += 1
@@ -42,6 +46,36 @@ class GallerySlideshowTests(unittest.TestCase):
         NovaDesktop._slideshow_tick(fake)
         self.assertFalse(fake.slideshow_enabled)
         self.assertEqual(fake.shown, 1)
+
+    def test_minimized_window_does_not_decode_new_images(self):
+        from nova_desktop import NovaDesktop
+
+        class MinimizedGallery:
+            slideshow_enabled = True
+            current_page = "gallery"
+            visible_gallery_indices = [0, 1]
+            _slideshow_job = None
+            shown = 0
+
+            def state(self):
+                return "iconic"
+
+            def _random_image(self):
+                self.shown += 1
+
+            def after(self, delay, callback):
+                self.delay = delay
+                return "scheduled"
+
+            def _stop_slideshow(self):
+                self.slideshow_enabled = False
+
+        fake = MinimizedGallery()
+        NovaDesktop._slideshow_tick(fake)
+        self.assertEqual(fake.shown, 0)
+        self.assertTrue(fake.slideshow_enabled)
+        self.assertEqual(fake.delay, 5000)
+        self.assertEqual(fake._slideshow_job, "scheduled")
 
 
 class GalleryNavigationTests(unittest.TestCase):
