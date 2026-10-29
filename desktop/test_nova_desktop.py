@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
+from nova_desktop import next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
 class GallerySlideshowTests(unittest.TestCase):
