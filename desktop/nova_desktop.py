@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import random
 import os
+import re
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -21,6 +22,12 @@ SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
 
+def natural_gallery_key(name: str) -> tuple:
+    """Sort 2.png before 10.png without reading image contents."""
+    return tuple((1, int(part)) if part.isdigit() else (0, part.casefold())
+                 for part in re.split(r"(\d+)", name))
+
+
 def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     """Include nested folders without following links or indexing endlessly."""
     if max_images <= 0 or not root.is_dir():
@@ -28,8 +35,9 @@ def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     images: list[Path] = []
     for current, dirs, files in os.walk(root, followlinks=False):
         # Do not follow junctions/symlinks to unrelated or cyclic directories.
-        dirs[:] = sorted(d for d in dirs if not (Path(current) / d).is_symlink())
-        for name in sorted(files, key=str.casefold):
+        dirs[:] = sorted((d for d in dirs if not (Path(current) / d).is_symlink()),
+                         key=natural_gallery_key)
+        for name in sorted(files, key=natural_gallery_key):
             path = Path(current) / name
             if path.suffix.lower() in IMAGE_TYPES and not path.is_symlink() and path.is_file():
                 images.append(path)
