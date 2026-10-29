@@ -79,6 +79,12 @@ class GalleryFilterTests(unittest.TestCase):
         self.assertTrue(gallery_matches_query(image, ''))
         self.assertFalse(gallery_matches_query(image, 'Нами'))
 
+    def test_multiple_words_match_regardless_of_order(self):
+        image = Path('Лето_Эрза_2026.PNG')
+        self.assertTrue(gallery_matches_query(image, 'эрза лето'))
+        self.assertTrue(gallery_matches_query(image, '2026 ЭРЗА'))
+        self.assertFalse(gallery_matches_query(image, 'эрза зима'))
+
 
 class GalleryImageSizeTests(unittest.TestCase):
     def test_common_phone_photos_remain_supported(self):
