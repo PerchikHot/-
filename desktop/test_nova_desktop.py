@@ -8,6 +8,19 @@ from pathlib import Path
 from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+class GalleryNavigationTests(unittest.TestCase):
+    def test_wraps_and_handles_empty_gallery(self):
+        from nova_desktop import gallery_step_index
+        self.assertIsNone(gallery_step_index(None, 0, 1))
+        self.assertIsNone(gallery_step_index(0, 3, 0))
+        self.assertEqual(gallery_step_index(None, 3, 1), 0)
+        self.assertEqual(gallery_step_index(None, 3, -1), 2)
+        self.assertEqual(gallery_step_index(2, 3, 1), 0)
+        self.assertEqual(gallery_step_index(0, 3, -1), 2)
+        self.assertEqual(gallery_step_index(1, 3, 1), 2)
+        self.assertEqual(gallery_step_index(99, 3, -1), 2)
+
+
 class GalleryPreviewVisibilityTests(unittest.TestCase):
     def test_preview_disappears_when_filter_or_rescan_excludes_file(self):
         from nova_desktop import gallery_preview_is_visible
