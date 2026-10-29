@@ -21,6 +21,16 @@ ACCENT = "#58c9ff"
 TEXT = "#e7f0ff"
 SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+SLIDESHOW_DELAYS_MS = (3000, 5000, 10000)
+
+
+def next_slideshow_delay_ms(current: int) -> int:
+    """Cycle through safe, predictable intervals for the local slideshow."""
+    try:
+        index = SLIDESHOW_DELAYS_MS.index(current)
+    except ValueError:
+        return 5000
+    return SLIDESHOW_DELAYS_MS[(index + 1) % len(SLIDESHOW_DELAYS_MS)]
 
 
 def natural_gallery_key(name: str) -> tuple:
