@@ -76,7 +76,14 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     except ValueError:
         searchable = path.name
     text = searchable.casefold()
-    return all(word in text for word in query.casefold().split())
+    for word in query.casefold().split():
+        if word.startswith('ext:'):
+            extension = word[4:].lstrip('.')
+            if not extension or f'.{extension}' not in IMAGE_TYPES or path.suffix.casefold() != f'.{extension}':
+                return False
+        elif word not in text:
+            return False
+    return True
 
 
 def is_oversized_image(width: int, height: int, max_pixels: int = 80_000_000) -> bool:
