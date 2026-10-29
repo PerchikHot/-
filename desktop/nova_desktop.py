@@ -257,6 +257,7 @@ class NovaDesktop(tk.Tk):
         self._pending_hide = None
         self._slideshow_job = None
         self.slideshow_enabled = False
+        self.slideshow_delay_ms = 5000
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
 
