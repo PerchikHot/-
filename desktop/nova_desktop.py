@@ -8,6 +8,7 @@ from __future__ import annotations
 import random
 import os
 import re
+import shlex
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -77,7 +78,13 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
         searchable = path.name
     text = searchable.casefold()
     folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
-    for word in query.casefold().split():
+    # Quoted filters support character/folder names containing spaces.
+    # An unfinished quote is an invalid filter, not a match-all query.
+    try:
+        terms = shlex.split(query.casefold())
+    except ValueError:
+        return False
+    for word in terms:
         # Exclude a format explicitly. Plain '-ext:gif' cannot be treated as
         # text because the filename normally contains no 'ext:' substring.
         if word.startswith('-ext:'):
@@ -325,7 +332,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 

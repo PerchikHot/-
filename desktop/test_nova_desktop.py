@@ -220,6 +220,28 @@ class ExcludedStructuredGalleryFilterTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(final, '-folder:эрза'))
 
 
+class QuotedGallerySearchTests(unittest.TestCase):
+    def test_quoted_folder_and_filename_filters(self):
+        root = Path("gallery")
+        selected = root / "Эрза Скарлет" / "Летняя форма" / "Портрет 01.png"
+        other = root / "Эрза Скарлет" / "Черновик" / "Портрет 01.png"
+        self.assertTrue(gallery_matches_query(selected, 'folder:"летняя форма" name:"портрет 01"', root))
+        self.assertFalse(gallery_matches_query(other, 'folder:"летняя форма"', root))
+        self.assertTrue(gallery_matches_query(selected, 'эрза -folder:"черновик"', root))
+        self.assertFalse(gallery_matches_query(selected, '-name:"портрет 01"', root))
+        self.assertFalse(gallery_matches_query(selected, 'folder:"незакрытая', root))
+
+    def test_quoted_search_does_not_read_or_modify_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "Моя папка"
+            folder.mkdir()
+            image = folder / "001.png"
+            image.write_bytes(b"unchanged")
+            self.assertTrue(gallery_matches_query(image, 'folder:"моя папка"', root))
+            self.assertEqual(image.read_bytes(), b"unchanged")
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
