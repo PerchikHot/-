@@ -513,6 +513,14 @@ class NovaDesktop(tk.Tk):
         self.slideshow_button.config(text="■ Стоп")
         self._slideshow_tick()
 
+    def _cycle_slideshow_speed(self):
+        self.slideshow_delay_ms = next_slideshow_delay_ms(self.slideshow_delay_ms)
+        self.slideshow_speed_button.config(text=f"{self.slideshow_delay_ms // 1000}с")
+        # Apply changes immediately without accumulating multiple timers.
+        if self.slideshow_enabled and self._slideshow_job is not None:
+            self.after_cancel(self._slideshow_job)
+            self._slideshow_job = self.after(self.slideshow_delay_ms, self._slideshow_tick)
+
     def _slideshow_tick(self):
         self._slideshow_job = None
         if (not self.slideshow_enabled or self.current_page != "gallery"
