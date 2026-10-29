@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import MemoryGame, random_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images
+from nova_desktop import MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, gallery_matches_query, collect_gallery_images
 
 
 class MemoryGameTests(unittest.TestCase):
@@ -70,6 +70,33 @@ class RandomGalleryTests(unittest.TestCase):
     def test_empty_or_small_gallery(self):
         self.assertEqual(random_candidate_indices(0), [])
         self.assertEqual(sorted(random_candidate_indices(3, rng=random.Random(1))), [0, 1, 2])
+
+
+class NoRepeatGalleryTests(unittest.TestCase):
+    def test_exhausts_gallery_before_starting_new_cycle(self):
+        seen = set()
+        picks = []
+        for _ in range(4):
+            candidates = unseen_candidate_indices(4, seen, rng=random.Random(8))
+            self.assertTrue(candidates)
+            chosen = candidates[0]
+            self.assertNotIn(chosen, seen)
+            seen.add(chosen)
+            picks.append(chosen)
+        self.assertEqual(set(picks), set(range(4)))
+        # The next click starts a new cycle, even for a one-image folder.
+        self.assertEqual(len(unseen_candidate_indices(4, seen, rng=random.Random(1))), 4)
+        self.assertEqual(seen, set())
+
+    def test_failed_candidates_are_not_retried_within_cycle(self):
+        seen = set()
+        first = unseen_candidate_indices(15, seen, limit=12, rng=random.Random(3))
+        seen.update(first)  # All failed to decode.
+        second = unseen_candidate_indices(15, seen, limit=12, rng=random.Random(4))
+        self.assertEqual(len(second), 3)
+        self.assertTrue(set(second).isdisjoint(first))
+        self.assertEqual(unseen_candidate_indices(0, seen), [])
+        self.assertEqual(unseen_candidate_indices(15, seen, limit=0), [])
 
 
 class GalleryFilterTests(unittest.TestCase):
