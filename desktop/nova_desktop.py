@@ -58,7 +58,17 @@ def gallery_step_index(current: int | None, count: int, direction: int) -> int |
 
 def gallery_preview_is_visible(previewed: Path | None, visible: list[Path]) -> bool:
     """Keep a preview only while its file belongs to the filtered gallery."""
-    return previewed is not None and previewed in visible
+    return gallery_preview_index(previewed, visible) is not None
+
+
+def gallery_preview_index(previewed: Path | None, visible: list[Path]) -> int | None:
+    """Preserve the selected image across rescan/filter refreshes."""
+    if previewed is None:
+        return None
+    try:
+        return visible.index(previewed)
+    except ValueError:
+        return None
 
 
 def random_candidate_indices(count: int, limit: int = 12, rng=None) -> list[int]:
@@ -435,6 +445,11 @@ class NovaDesktop(tk.Tk):
         for index in self.visible_gallery_indices:
             path = self.gallery_files[index]
             self.gallery_list.insert(tk.END, str(path.relative_to(self.gallery_root)) if self.gallery_root else path.name)
+        # Keep Next/Previous anchored to the same image after a rescan.
+        selected = gallery_preview_index(self._previewed_path, visible_paths)
+        if selected is not None:
+            self.gallery_list.selection_set(selected)
+            self.gallery_list.see(selected)
         self.gallery_status.config(
             text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
         )
