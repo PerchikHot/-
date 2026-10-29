@@ -9,6 +9,12 @@ from nova_desktop import next_slideshow_delay_ms, MemoryGame, random_candidate_i
 
 
 class GallerySlideshowTests(unittest.TestCase):
+    def test_slideshow_speed_cycles_predictably(self):
+        self.assertEqual(next_slideshow_delay_ms(5000), 10000)
+        self.assertEqual(next_slideshow_delay_ms(10000), 3000)
+        self.assertEqual(next_slideshow_delay_ms(3000), 5000)
+        self.assertEqual(next_slideshow_delay_ms(-1), 5000)
+
     def test_slideshow_uses_non_repeating_gallery_and_stops_outside_tab(self):
         from nova_desktop import NovaDesktop
 
