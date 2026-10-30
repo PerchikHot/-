@@ -243,6 +243,10 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "cycle_speed"
     if keysym == "F8":
         return "random_image"
+    if keysym == "F9":
+        return "previous_image"
+    if keysym == "F10":
+        return "next_image"
     return None
 
 
@@ -377,6 +381,10 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "random_image":
             self._random_image()
             return "break"
+        if self.current_page == "gallery" and action == "previous_image":
+            return self._step_gallery(-1)
+        if self.current_page == "gallery" and action == "next_image":
+            return self._step_gallery(1)
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
