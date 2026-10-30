@@ -9,12 +9,15 @@ import random
 import os
 import re
 import shlex
+from datetime import date
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageOps, ImageTk
-from memory_stats import default_stats_path, load_memory_stats, record_memory_win, save_memory_stats
+from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
+    save_memory_stats, daily_challenge_seed, load_daily_challenge,
+    record_daily_challenge_win)
 
 BACKGROUND = "#090e1c"
 PANEL = "#172443"
@@ -357,6 +360,10 @@ class NovaDesktop(tk.Tk):
         self.game = MemoryGame()
         self.stats_path = default_stats_path()
         self.memory_stats = load_memory_stats(self.stats_path)
+        self.daily_mode = False
+        self.daily_day = date.today().isoformat()
+        self.daily_path = self.stats_path.with_name("daily_challenge.json")
+        self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day)
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
         self.gallery_root: Path | None = None
@@ -422,6 +429,8 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
+        self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
+                     self._toggle_daily_mode).pack(side="right", padx=6)
         self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
         self._label(top, "Карточки: 1–9, A–G • N — новая игра", 10).pack(side="right", padx=12)
         grid = tk.Frame(self.content, bg=BACKGROUND)
@@ -443,7 +452,15 @@ class NovaDesktop(tk.Tk):
             return
         best = self.memory_stats["best_moves"]
         record = f"Рекорд: {best} ходов" if best is not None else "Рекорд: —"
-        self.status.config(text=f"Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Подсказки: {2 - self.game.hints_used}/2  •  Побед: {self.memory_stats['wins']}  •  {record}")
+        if self.daily_mode:
+            daily_best = self.daily_stats["best_moves"]
+            record = f"Лучший результат дня: {daily_best}" if daily_best is not None else "Рекорд дня: —"
+            wins = self.daily_stats["wins"]
+            mode = f"Вызов {self.daily_day}"
+        else:
+            wins = self.memory_stats["wins"]
+            mode = "Обычная игра"
+        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Подсказки: {2 - self.game.hints_used}/2  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
             button.config(
@@ -461,14 +478,22 @@ class NovaDesktop(tk.Tk):
             # Assisted wins count as completed games, but do not distort
             # the unassisted personal record.
             if self.game.hints_used == 0:
-                self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
+                if self.daily_mode:
+                    self.daily_stats = record_daily_challenge_win(
+                        self.daily_stats, self.game.moves, self.daily_day)
+                else:
+                    self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
             try:
-                save_memory_stats(self.stats_path, self.memory_stats)
+                if self.daily_mode:
+                    save_memory_stats(self.daily_path, self.daily_stats)
+                else:
+                    save_memory_stats(self.stats_path, self.memory_stats)
             except OSError:
                 # An unavailable user profile must not prevent finishing a game.
                 pass
             self._render_memory()
-            suffix = "С подсказками — рекорд не изменён." if self.game.hints_used else f"Рекорд: {self.memory_stats['best_moves']} ходов."
+            best = self.daily_stats["best_moves"] if self.daily_mode else self.memory_stats["best_moves"]
+            suffix = "С подсказками — рекорд не изменён." if self.game.hints_used else f"Рекорд: {best} ходов."
             messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\n{suffix}")
 
     def _memory_hint(self):
@@ -558,6 +583,10 @@ class NovaDesktop(tk.Tk):
         if index is not None:
             self._flip(index)
 
+    def _toggle_daily_mode(self):
+        self.daily_mode = not self.daily_mode
+        self._new_game()
+
     def _new_game(self):
         # Cancel the old game's pending mismatch before replacing its state.
         if self._pending_hide is not None:
@@ -566,7 +595,12 @@ class NovaDesktop(tk.Tk):
         if self._pending_hint is not None:
             self.after_cancel(self._pending_hint)
             self._pending_hint = None
-        self.game = MemoryGame()
+        if self.daily_mode:
+            self.daily_day = date.today().isoformat()
+            self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day)
+            self.game = MemoryGame(seed=daily_challenge_seed(self.daily_day))
+        else:
+            self.game = MemoryGame()
         self._show("memory")
 
     def _gallery_page(self):
