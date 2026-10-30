@@ -122,6 +122,22 @@ class GallerySelectionRefreshTests(unittest.TestCase):
         self.assertIsNone(gallery_preview_index(None, [first]))
 
 
+class GalleryRootSafetyTests(unittest.TestCase):
+    def test_does_not_scan_symlinked_gallery_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            source = base / "private"
+            source.mkdir()
+            (source / "image.png").write_bytes(b"sample")
+            linked = base / "gallery-link"
+            try:
+                linked.symlink_to(source, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Directory symlinks unavailable")
+            self.assertEqual(collect_gallery_images(linked), [])
+            self.assertEqual(collect_gallery_images(source), [source / "image.png"])
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
@@ -132,7 +148,7 @@ class GalleryShortcutTests(unittest.TestCase):
         self.assertEqual(gallery_shortcut_action("F5", 0x4), "refresh")
         self.assertEqual(gallery_shortcut_action("F6", 0), "toggle_slideshow")
         self.assertEqual(gallery_shortcut_action("F7", 0), "cycle_speed")
-        self.assertIsNone(gallery_shortcut_action("F8", 0))
+        self.assertEqual(gallery_shortcut_action("F8", 0), "random_image")
         self.assertIsNone(gallery_shortcut_action("f", 0))
         self.assertIsNone(gallery_shortcut_action("g", 0x4))
 
