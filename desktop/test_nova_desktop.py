@@ -151,6 +151,46 @@ class GalleryRootSafetyTests(unittest.TestCase):
             self.assertEqual(collect_gallery_images(source), [source / "image.png"])
 
 
+class GalleryScanResilienceTests(unittest.TestCase):
+    def test_locked_file_does_not_hide_other_images(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            locked = root / "locked.png"
+            good = root / "good.png"
+            locked.write_bytes(b"unreadable")
+            good.write_bytes(b"visible")
+            original = Path.is_file
+
+            def is_file(path):
+                if path.name == "locked.png":
+                    raise PermissionError("locked by another program")
+                return original(path)
+
+            with patch.object(Path, "is_file", new=is_file):
+                self.assertEqual(collect_gallery_images(root), [good])
+
+    def test_folder_picker_starts_in_selected_library(self):
+        from unittest.mock import patch
+        from nova_desktop import NovaDesktop
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class FakeApp:
+                gallery_root = root
+                gallery_files = []
+                refreshed = False
+
+                def _refresh_gallery(self):
+                    self.refreshed = True
+
+            fake = FakeApp()
+            with patch("nova_desktop.filedialog.askdirectory", return_value=str(root)) as picker:
+                NovaDesktop._choose_folder(fake)
+            self.assertEqual(picker.call_args.kwargs["initialdir"], str(root))
+            self.assertTrue(fake.refreshed)
+
+
 class FolderPickerShortcutTests(unittest.TestCase):
     def test_ctrl_o_opens_gallery_folder_picker_only(self):
         from nova_desktop import gallery_shortcut_action, NovaDesktop
