@@ -260,9 +260,33 @@ class MemoryGame:
         self.matched: set[int] = set()
         self.flipped: list[int] = []
         self.moves = 0
+        self.hints_used = 0
+        self.hint_indices: set[int] = set()
+
+    def peek_pair(self) -> tuple[int, int] | None:
+        """Reveal one unmatched pair, at most twice per game.
+
+        Hints are never counted as record-eligible wins. A pending mismatch
+        cannot be bypassed by requesting a hint.
+        """
+        if self.hints_used >= 2 or self.flipped or self.hint_indices:
+            return None
+        for index, symbol in enumerate(self.cards):
+            if index in self.matched:
+                continue
+            partner = next((j for j in range(index + 1, len(self.cards))
+                            if j not in self.matched and self.cards[j] == symbol), None)
+            if partner is not None:
+                self.hints_used += 1
+                self.hint_indices = {index, partner}
+                return index, partner
+        return None
+
+    def hide_hint(self) -> None:
+        self.hint_indices.clear()
 
     def choose(self, index: int) -> str:
-        if index not in range(len(self.cards)) or index in self.matched:
+        if self.hint_indices or index not in range(len(self.cards)) or index in self.matched:
             return "ignored"
         if index in self.flipped or len(self.flipped) >= 2:
             return "ignored"
@@ -342,6 +366,7 @@ class NovaDesktop(tk.Tk):
         self.gallery_photo = None
         self._previewed_path: Path | None = None
         self._pending_hide = None
+        self._pending_hint = None
         self._slideshow_job = None
         self.slideshow_enabled = False
         self.slideshow_delay_ms = 5000
@@ -379,6 +404,10 @@ class NovaDesktop(tk.Tk):
             self.after_cancel(self._pending_hide)
             self._pending_hide = None
             self.game.hide_mismatch()
+        if self._pending_hint is not None:
+            self.after_cancel(self._pending_hint)
+            self._pending_hint = None
+            self.game.hide_hint()
         self.buttons = []
         for child in self.content.winfo_children():
             child.destroy()
@@ -393,6 +422,7 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
+        self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
         self._label(top, "Карточки: 1–9, A–G • N — новая игра", 10).pack(side="right", padx=12)
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
@@ -413,9 +443,9 @@ class NovaDesktop(tk.Tk):
             return
         best = self.memory_stats["best_moves"]
         record = f"Рекорд: {best} ходов" if best is not None else "Рекорд: —"
-        self.status.config(text=f"Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Побед: {self.memory_stats['wins']}  •  {record}")
+        self.status.config(text=f"Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Подсказки: {2 - self.game.hints_used}/2  •  Побед: {self.memory_stats['wins']}  •  {record}")
         for i, button in enumerate(self.buttons):
-            visible = i in self.game.flipped or i in self.game.matched
+            visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
             button.config(
                 text=self.game.cards[i] if visible else "?",
                 bg="#225c83" if i in self.game.matched else PANEL,
@@ -428,14 +458,31 @@ class NovaDesktop(tk.Tk):
         if result == "miss":
             self._pending_hide = self.after(700, self._hide_mismatch)
         elif result == "win":
-            self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
+            # Assisted wins count as completed games, but do not distort
+            # the unassisted personal record.
+            if self.game.hints_used == 0:
+                self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
             try:
                 save_memory_stats(self.stats_path, self.memory_stats)
             except OSError:
                 # An unavailable user profile must not prevent finishing a game.
                 pass
             self._render_memory()
-            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nРекорд: {self.memory_stats['best_moves']} ходов.")
+            suffix = "С подсказками — рекорд не изменён." if self.game.hints_used else f"Рекорд: {self.memory_stats['best_moves']} ходов."
+            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\n{suffix}")
+
+    def _memory_hint(self):
+        if self.current_page != "memory" or self._pending_hide is not None:
+            return
+        if self.game.peek_pair() is None:
+            return
+        self._render_memory()
+        self._pending_hint = self.after(1800, self._hide_hint)
+
+    def _hide_hint(self):
+        self._pending_hint = None
+        self.game.hide_hint()
+        self._render_memory()
 
     def _hide_mismatch(self):
         self._pending_hide = None
@@ -501,6 +548,9 @@ class NovaDesktop(tk.Tk):
             return self._jump_gallery(action == "first_image")
         if self.current_page != "memory":
             return
+        if event.keysym.lower() == "h":
+            self._memory_hint()
+            return
         if is_new_game_key(event.keysym):
             self._new_game()
             return
@@ -513,6 +563,9 @@ class NovaDesktop(tk.Tk):
         if self._pending_hide is not None:
             self.after_cancel(self._pending_hide)
             self._pending_hide = None
+        if self._pending_hint is not None:
+            self.after_cancel(self._pending_hint)
+            self._pending_hint = None
         self.game = MemoryGame()
         self._show("memory")
 
