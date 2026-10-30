@@ -151,6 +151,26 @@ class GalleryRootSafetyTests(unittest.TestCase):
             self.assertEqual(collect_gallery_images(source), [source / "image.png"])
 
 
+class GalleryJunctionSafetyTests(unittest.TestCase):
+    def test_skips_junction_like_folder_without_losing_sibling_images(self):
+        from unittest.mock import patch
+        from nova_desktop import is_linked_gallery_directory
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            linked = root / "linked"
+            linked.mkdir()
+            (linked / "hidden.png").write_bytes(b"not scanned")
+            visible = root / "visible.png"
+            visible.write_bytes(b"safe")
+            original = is_linked_gallery_directory
+
+            def is_link(path):
+                return path.name == "linked" or original(path)
+
+            with patch("nova_desktop.is_linked_gallery_directory", side_effect=is_link):
+                self.assertEqual(collect_gallery_images(root), [visible])
+
+
 class GalleryScanResilienceTests(unittest.TestCase):
     def test_locked_file_does_not_hide_other_images(self):
         from unittest.mock import patch
