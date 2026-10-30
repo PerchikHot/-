@@ -291,6 +291,10 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "next_image"
     if keysym == "F11":
         return "toggle_fullscreen"
+    if keysym == "Home":
+        return "first_image"
+    if keysym == "End":
+        return "last_image"
     return None
 
 
