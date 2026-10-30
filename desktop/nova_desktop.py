@@ -141,7 +141,9 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     # Quoted filters support character/folder names containing spaces.
     # An unfinished quote is an invalid filter, not a match-all query.
     try:
-        terms = shlex.split(query.casefold())
+        # Accept pasted Windows-style folder paths in path:/folder: filters.
+        # Normalize only the query, never the actual filesystem paths.
+        terms = shlex.split(query.casefold().replace('\\', '/'))
     except ValueError:
         return False
     for word in terms:
