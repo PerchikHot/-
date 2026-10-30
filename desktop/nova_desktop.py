@@ -110,7 +110,9 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
         searchable = str(path.relative_to(root)) if root is not None else path.name
     except ValueError:
         searchable = path.name
-    text = searchable.casefold()
+    # Path separators differ between Windows and Linux CI; normalize only
+    # the searchable representation, never the user's actual file paths.
+    text = searchable.replace('\\', '/').casefold()
     folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
     # Quoted filters support character/folder names containing spaces.
     # An unfinished quote is an invalid filter, not a match-all query.
