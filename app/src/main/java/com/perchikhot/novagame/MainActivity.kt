@@ -219,6 +219,7 @@ class MainActivity : Activity() {
         var locked=false
         var mistakes=0
         var completed=false
+        var hintsUsed=0
         val progress=TextView(this).apply {
             text="Найдено пар: 0/${chosen.size} • Ошибки: 0"
             textSize=15f
@@ -249,11 +250,16 @@ class MainActivity : Activity() {
                             completed=true
                             val wins=records.getInt(winsKey,0).coerceAtLeast(0)
                             val oldBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
-                            records.edit().putInt(winsKey,(wins+1).coerceAtMost(1000000))
+                            // Assisted completions still award points, but never alter
+                            // the unassisted win count or personal best.
+                            if(hintsUsed==0) records.edit()
+                                .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
                             val reward=if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
                             award(reward)
-                            progress.text="Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
+                            progress.text=if(hintsUsed>0)
+                                "Победа с подсказками! Ошибок: $mistakes • Рекорд не изменён"
+                                else "Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
                             label("Все пары найдены! +$reward очков")
                         }
                     } else {
@@ -270,6 +276,32 @@ class MainActivity : Activity() {
             }
         }
         buttons.forEachIndexed {i,_->hide(i)}
+        lateinit var hintButton:Button
+        hintButton=button("Подсказка: 2 осталось") {
+            if(!completed && !locked && first<0 && hintsUsed<2) {
+                val remaining=values.indices.filter {it !in opened}
+                var pair:Pair<Int,Int>?=null
+                for(i in remaining) {
+                    val other=remaining.firstOrNull {it!=i && values[it]==values[i]}
+                    if(other!=null) {pair=i to other;break}
+                }
+                pair?.let {(a,b) ->
+                    hintsUsed++
+                    locked=true
+                    show(a);show(b)
+                    hintButton.text="Подсказок осталось: ${2-hintsUsed}"
+                    progress.text="Подсказка ${hintsUsed}/2 • Рекорд без подсказок"
+                    hintButton.postDelayed({
+                        if(!isFinishing && !isDestroyed) {
+                            if(a !in opened) hide(a)
+                            if(b !in opened) hide(b)
+                            locked=false
+                        }
+                    },1400)
+                }
+            }
+        }
+        root.addView(hintButton)
         back()
     }
     private fun puzzle() {
