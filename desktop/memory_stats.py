@@ -67,3 +67,40 @@ def save_memory_stats(path: Path, stats: dict) -> None:
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def daily_challenge_seed(day: str) -> int:
+    """One deterministic 4x4 board per local calendar day."""
+    from datetime import date
+    parsed = date.fromisoformat(day)
+    return parsed.year * 10000 + parsed.month * 100 + parsed.day
+
+
+def load_daily_challenge(path: Path, day: str) -> dict:
+    """Daily results never overwrite ordinary memory-game records."""
+    daily_challenge_seed(day)
+    fallback = {"date": day, "wins": 0, "best_moves": None}
+    try:
+        if path.stat().st_size > 4096:
+            return fallback
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("date") != day:
+            return fallback
+        wins, best = data.get("wins"), data.get("best_moves")
+        if type(wins) is not int or not 0 <= wins <= 100000:
+            return fallback
+        if best is not None and (type(best) is not int or not 8 <= best <= 100000):
+            return fallback
+        if wins == 0 and best is not None:
+            return fallback
+        return {"date": day, "wins": wins, "best_moves": best}
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return fallback
+
+
+def record_daily_challenge_win(stats: dict, moves: int, day: str) -> dict:
+    """Store the best unassisted result for the current day's fixed board."""
+    if stats.get("date") != day:
+        stats = {"date": day, "wins": 0, "best_moves": None}
+    result = record_memory_win(stats, moves)
+    return {"date": day, **result}
