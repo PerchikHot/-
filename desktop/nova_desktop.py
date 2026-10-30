@@ -159,13 +159,17 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
                 return False
             continue
         if word.startswith('-path:'):
-            excluded_path = word[6:]
-            if not excluded_path or root is None or excluded_path in text:
+            # A comma-separated list excludes any matching relative path.
+            excluded_paths = word[6:].split(',')
+            if (root is None or not all(excluded_paths)
+                    or any(part in text for part in excluded_paths)):
                 return False
             continue
         if word.startswith('path:'):
-            included_path = word[5:]
-            if not included_path or root is None or included_path not in text:
+            # Match any supplied relative path, preserving AND across filters.
+            included_paths = word[5:].split(',')
+            if (root is None or not all(included_paths)
+                    or not any(part in text for part in included_paths)):
                 return False
             continue
         if word.startswith('-folder:'):
