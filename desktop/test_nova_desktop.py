@@ -781,3 +781,15 @@ class GalleryPermissionAndEdgeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WindowsFolderSearchTests(unittest.TestCase):
+    def test_windows_style_paths_work_in_local_gallery_filters(self):
+        from nova_desktop import gallery_matches_query
+        root = Path('gallery')
+        picture = root / 'Art' / 'Erza' / '001.png'
+        self.assertTrue(gallery_matches_query(picture, r'path:Art\Erza', root))
+        self.assertTrue(gallery_matches_query(picture, r'folder:Art\Erza', root))
+        self.assertTrue(gallery_matches_query(picture, r'path:"Art\Erza"', root))
+        self.assertFalse(gallery_matches_query(picture, r'-path:Art\Erza', root))
+        self.assertFalse(gallery_matches_query(picture, r'path:Art\Nami', root))
