@@ -258,8 +258,10 @@ class MemoryGame:
 
 def gallery_shortcut_action(keysym: str, state: int) -> str | None:
     """Windows-friendly gallery shortcuts, independent of focused widget."""
-    if keysym.lower() == "f" and state & 0x4:  # Tk ControlMask
+    if keysym.lower() in ("f", "l") and state & 0x4:  # Tk ControlMask
         return "focus"
+    if keysym.lower() == "r" and state & 0x4:
+        return "refresh"
     if keysym.lower() == "o" and state & 0x4:
         return "choose_folder"
     if keysym == "Escape":
