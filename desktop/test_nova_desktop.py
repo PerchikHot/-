@@ -100,6 +100,20 @@ class GalleryNavigationTests(unittest.TestCase):
         self.assertEqual(gallery_step_index(99, 3, -1), 2)
 
 
+class GalleryPageNavigationTests(unittest.TestCase):
+    def test_page_keys_jump_ten_images_and_wrap_without_skipping_filters(self):
+        from nova_desktop import gallery_step_index, gallery_shortcut_action
+        self.assertEqual(gallery_shortcut_action("Prior", 0), "previous_page")
+        self.assertEqual(gallery_shortcut_action("Next", 0), "next_page")
+        self.assertEqual(gallery_step_index(3, 25, 10), 13)
+        self.assertEqual(gallery_step_index(23, 25, 10), 8)
+        self.assertEqual(gallery_step_index(3, 25, -10), 18)
+        self.assertEqual(gallery_step_index(None, 25, 10), 0)
+        self.assertEqual(gallery_step_index(None, 25, -10), 24)
+        self.assertIsNone(gallery_step_index(0, 0, 10))
+        self.assertIsNone(gallery_step_index(0, 10, 0))
+
+
 class GalleryPreviewVisibilityTests(unittest.TestCase):
     def test_preview_disappears_when_filter_or_rescan_excludes_file(self):
         from nova_desktop import gallery_preview_is_visible
