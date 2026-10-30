@@ -43,7 +43,7 @@ class GalleryPathListTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(erza, "-path:", root))
         self.assertFalse(gallery_matches_query(erza, query, None))
         # Windows-style separators are normalized only for searching.
-        self.assertTrue(gallery_matches_query(erza, r"path:characters\\erza,characters\\rias", root))
+        self.assertTrue(gallery_matches_query(erza, r"path:characters\erza,characters\rias", root))
 
 
 class GallerySlideshowTests(unittest.TestCase):
