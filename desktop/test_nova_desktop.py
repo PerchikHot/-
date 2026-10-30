@@ -164,8 +164,35 @@ class GalleryShortcutTests(unittest.TestCase):
         self.assertEqual(gallery_shortcut_action("F8", 0), "random_image")
         self.assertEqual(gallery_shortcut_action("F9", 0), "previous_image")
         self.assertEqual(gallery_shortcut_action("F10", 0), "next_image")
+        self.assertEqual(gallery_shortcut_action("F11", 0), "toggle_fullscreen")
         self.assertIsNone(gallery_shortcut_action("f", 0))
         self.assertIsNone(gallery_shortcut_action("g", 0x4))
+
+
+class FullscreenShortcutTests(unittest.TestCase):
+    def test_f11_toggles_back_without_requiring_a_display(self):
+        from nova_desktop import NovaDesktop
+
+        class FakeWindow:
+            def __init__(self):
+                self.fullscreen = False
+
+            def attributes(self, name, value=None):
+                self.assertion_name = name
+                if value is not None:
+                    self.fullscreen = value
+                return self.fullscreen
+
+        class FakeEvent:
+            keysym = "F11"
+            state = 0
+
+        fake = FakeWindow()
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, FakeEvent()), "break")
+        self.assertTrue(fake.fullscreen)
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, FakeEvent()), "break")
+        self.assertFalse(fake.fullscreen)
+        self.assertEqual(fake.assertion_name, "-fullscreen")
 
 
 class MemoryGameTests(unittest.TestCase):
