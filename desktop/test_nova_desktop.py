@@ -122,6 +122,19 @@ class GallerySelectionRefreshTests(unittest.TestCase):
         self.assertIsNone(gallery_preview_index(None, [first]))
 
 
+class GalleryPreviewRaceTests(unittest.TestCase):
+    def test_locked_or_deleted_file_is_skipped_without_crashing(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            photo = Path(tmp) / "photo.png"
+            photo.write_bytes(b"preview")
+            self.assertTrue(is_safe_gallery_preview(photo))
+            with patch.object(Path, "stat", side_effect=PermissionError("locked")):
+                self.assertFalse(is_safe_gallery_preview(photo))
+            photo.unlink()
+            self.assertFalse(is_safe_gallery_preview(photo))
+
+
 class GalleryRootSafetyTests(unittest.TestCase):
     def test_does_not_scan_symlinked_gallery_root(self):
         with tempfile.TemporaryDirectory() as tmp:
