@@ -41,7 +41,7 @@ def natural_gallery_key(name: str) -> tuple:
 
 def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     """Include nested folders without following links or indexing endlessly."""
-    if max_images <= 0 or not root.is_dir():
+    if max_images <= 0 or root.is_symlink() or not root.is_dir():
         return []
     images: list[Path] = []
     for current, dirs, files in os.walk(root, followlinks=False):
@@ -241,6 +241,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "toggle_slideshow"
     if keysym == "F7":
         return "cycle_speed"
+    if keysym == "F8":
+        return "random_image"
     return None
 
 
@@ -372,6 +374,9 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "cycle_speed":
             self._cycle_slideshow_speed()
             return "break"
+        if self.current_page == "gallery" and action == "random_image":
+            self._random_image()
+            return "break"
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
@@ -424,7 +429,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
