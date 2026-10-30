@@ -151,6 +151,28 @@ class GalleryRootSafetyTests(unittest.TestCase):
             self.assertEqual(collect_gallery_images(source), [source / "image.png"])
 
 
+class FolderPickerShortcutTests(unittest.TestCase):
+    def test_ctrl_o_opens_gallery_folder_picker_only(self):
+        from nova_desktop import gallery_shortcut_action, NovaDesktop
+        self.assertEqual(gallery_shortcut_action('o', 0x4), 'choose_folder')
+        self.assertEqual(gallery_shortcut_action('O', 0x4), 'choose_folder')
+        self.assertIsNone(gallery_shortcut_action('o', 0))
+
+        class FakeGallery:
+            current_page = 'gallery'
+            opened = False
+
+            def _choose_folder(self):
+                self.opened = True
+
+            def attributes(self, _name):
+                return False
+
+        fake = FakeGallery()
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, type('Event', (), {'keysym': 'o', 'state': 0x4})()), 'break')
+        self.assertTrue(fake.opened)
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
