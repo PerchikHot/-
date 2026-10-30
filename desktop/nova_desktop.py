@@ -169,13 +169,15 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
                 return False
             continue
         if word.startswith('-folder:'):
-            excluded_folder = word[8:]
-            if not excluded_folder or root is None or excluded_folder in folder_text:
+            excluded_folders = word[8:].split(',')
+            if (root is None or not all(excluded_folders)
+                    or any(folder in folder_text for folder in excluded_folders)):
                 return False
             continue
         if word.startswith('-name:'):
-            excluded_name = word[6:]
-            if not excluded_name or excluded_name in path.name.casefold():
+            excluded_names = word[6:].split(',')
+            if (not all(excluded_names)
+                    or any(name in path.name.casefold() for name in excluded_names)):
                 return False
             continue
         # A leading minus excludes matching images or folders, e.g.
@@ -187,11 +189,13 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
             continue
         if word.startswith('folder:'):
             # Restrict a filter to folder names, not a matching filename.
-            if not word[7:] or word[7:] not in folder_text:
+            folders = word[7:].split(',')
+            if not all(folders) or not any(folder in folder_text for folder in folders):
                 return False
         elif word.startswith('name:'):
             # Search the filename only; character folders are excluded.
-            if not word[5:] or word[5:] not in path.name.casefold():
+            names = word[5:].split(',')
+            if not all(names) or not any(name in path.name.casefold() for name in names):
                 return False
         elif word.startswith('ext:'):
             # Accept a comma-separated set of formats, e.g. ext:png,jpg,
@@ -521,7 +525,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F4 — копировать путь  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F4 — копировать путь  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза,Риас  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
