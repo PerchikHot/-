@@ -326,6 +326,36 @@ class GalleryCopyPathTests(unittest.TestCase):
         self.assertIn("скопирован", fake.gallery_status.text)
 
 
+class GalleryCopyFilenameTests(unittest.TestCase):
+    def test_f2_copies_only_basename_without_private_folder(self):
+        from nova_desktop import gallery_shortcut_action, NovaDesktop
+        self.assertEqual(gallery_shortcut_action("F2", 0), "copy_filename")
+
+        class FakeList:
+            def curselection(self):
+                return (0,)
+
+        class FakeStatus:
+            def config(self, **kwargs):
+                self.text = kwargs["text"]
+
+        class FakeGallery:
+            gallery_list = FakeList()
+            gallery_files = [Path("private") / "photos" / "erza.png"]
+            visible_gallery_indices = [0]
+            gallery_status = FakeStatus()
+            copied = None
+            def clipboard_clear(self):
+                self.copied = None
+            def clipboard_append(self, text):
+                self.copied = text
+
+        fake = FakeGallery()
+        NovaDesktop._copy_gallery_filename(fake)
+        self.assertEqual(fake.copied, "erza.png")
+        self.assertNotIn("private", fake.copied)
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
