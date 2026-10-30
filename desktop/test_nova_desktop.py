@@ -24,7 +24,7 @@ class MemoryHintTests(unittest.TestCase):
         self.assertIsNone(game.peek_pair())
         game.hide_hint()
         self.assertEqual(game.choose(a), "first")
-        game.hide_mismatch()
+        game.flipped.clear()
         second = game.peek_pair()
         self.assertIsNotNone(second)
         game.hide_hint()
