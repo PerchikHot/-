@@ -378,6 +378,10 @@ class NovaDesktop(tk.Tk):
             self.gallery_filter_entry.focus_set()
             self.gallery_filter_entry.select_range(0, tk.END)
             return "break"
+        if action == "clear" and bool(self.attributes("-fullscreen")):
+            # Escape should always offer a way out of immersive mode.
+            self.attributes("-fullscreen", False)
+            return "break"
         if self.current_page == "gallery" and action == "clear":
             self._clear_gallery_filter()
             return "break"
