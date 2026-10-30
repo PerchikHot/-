@@ -195,6 +195,35 @@ class FullscreenShortcutTests(unittest.TestCase):
         self.assertEqual(fake.assertion_name, "-fullscreen")
 
 
+class FullscreenEscapeTests(unittest.TestCase):
+    def test_escape_exits_fullscreen_without_clearing_gallery_filter(self):
+        from nova_desktop import NovaDesktop
+
+        class FakeWindow:
+            current_page = "gallery"
+            fullscreen = True
+            cleared = False
+
+            def attributes(self, name, value=None):
+                self.assertion_name = name
+                if value is not None:
+                    self.fullscreen = value
+                return self.fullscreen
+
+            def _clear_gallery_filter(self):
+                self.cleared = True
+
+        class FakeEvent:
+            keysym = "Escape"
+            state = 0
+
+        fake = FakeWindow()
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, FakeEvent()), "break")
+        self.assertFalse(fake.fullscreen)
+        self.assertFalse(fake.cleared)
+        self.assertEqual(fake.assertion_name, "-fullscreen")
+
+
 class MemoryGameTests(unittest.TestCase):
     def test_deck_contains_eight_pairs(self):
         game = MemoryGame(seed=1)
