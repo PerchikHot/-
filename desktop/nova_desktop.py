@@ -253,6 +253,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "previous_image"
     if keysym == "F10":
         return "next_image"
+    if keysym == "F11":
+        return "toggle_fullscreen"
     return None
 
 
@@ -366,6 +368,10 @@ class NovaDesktop(tk.Tk):
 
     def _handle_memory_key(self, event):
         action = gallery_shortcut_action(event.keysym, event.state)
+        if action == "toggle_fullscreen":
+            # A reversible desktop-only display preference; no image files change.
+            self.attributes("-fullscreen", not bool(self.attributes("-fullscreen")))
+            return "break"
         if action == "focus":
             if self.current_page != "gallery":
                 self._show("gallery")
@@ -443,7 +449,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
