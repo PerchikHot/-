@@ -186,7 +186,7 @@ class MainActivity : Activity() {
         }
         return buttons
     }
-    private fun memory() {
+    private fun memory(pairLimit:Int=6) {
         screen("ПАМЯТЬ • ФОТО-КАРТОЧКИ")
         label("Открывай по две карточки и находи одинаковые изображения.",15)
         val imported=ImageLibrary.imported(this)
@@ -197,7 +197,18 @@ class MainActivity : Activity() {
             back()
             return
         }
-        val chosen=allowed.shuffled().take(minOf(6,allowed.size))
+        val chosen=allowed.shuffled().take(minOf(pairLimit,allowed.size))
+        val records=getSharedPreferences("memory_records",MODE_PRIVATE)
+        val recordKey="best_mistakes_${chosen.size}"
+        val winsKey="wins_${chosen.size}"
+        val previousBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
+        label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок",14)
+        val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
+        for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
+            difficulties.addView(button("$pairs пары") {memory(pairs)},
+                LinearLayout.LayoutParams(0,dp(48),1f))
+        }
+        root.addView(difficulties)
         val values=(chosen.indices.toList()+chosen.indices.toList()).shuffled()
         val thumbs=chosen.map {file ->
             android.graphics.BitmapFactory.decodeFile(file.absolutePath,
@@ -207,6 +218,14 @@ class MainActivity : Activity() {
         var first=-1
         var locked=false
         var mistakes=0
+        var completed=false
+        val progress=TextView(this).apply {
+            text="Найдено пар: 0/${chosen.size} • Ошибки: 0"
+            textSize=15f
+            setTextColor(Color.rgb(177,215,255))
+            gravity=Gravity.CENTER
+        }
+        root.addView(progress)
         val tactical=intent.getStringExtra("prototype")=="tactics"
         lateinit var buttons:List<Button>
         fun show(i:Int) {
@@ -225,12 +244,21 @@ class MainActivity : Activity() {
                     first=-1
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
-                        if(opened.size==values.size) {
-                            award(if(tactical) maxOf(10,60-mistakes*5) else 30)
-                            label("Все пары найдены! +30 очков")
+                        progress.text="Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
+                        if(!completed && opened.size==values.size) {
+                            completed=true
+                            val wins=records.getInt(winsKey,0).coerceAtLeast(0)
+                            val oldBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
+                            records.edit().putInt(winsKey,(wins+1).coerceAtMost(1000000))
+                                .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
+                            val reward=if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
+                            award(reward)
+                            progress.text="Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
+                            label("Все пары найдены! +$reward очков")
                         }
                     } else {
                         mistakes++
+                        progress.text="Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
                         if(tactical) Toast.makeText(this,"Ошибки: $mistakes • Бонус уменьшается",Toast.LENGTH_SHORT).show()
                         locked=true
                         buttons[i].postDelayed({
