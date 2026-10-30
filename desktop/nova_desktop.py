@@ -130,6 +130,16 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
             if path.suffix.casefold() in extensions:
                 return False
             continue
+        if word.startswith('-path:'):
+            excluded_path = word[6:]
+            if not excluded_path or root is None or excluded_path in text:
+                return False
+            continue
+        if word.startswith('path:'):
+            included_path = word[5:]
+            if not included_path or root is None or included_path not in text:
+                return False
+            continue
         if word.startswith('-folder:'):
             excluded_folder = word[8:]
             if not excluded_folder or root is None or excluded_folder in folder_text:
