@@ -9,6 +9,38 @@ from nova_desktop import next_slideshow_delay_ms, MemoryGame, random_candidate_i
 
 
 
+class MemoryHintTests(unittest.TestCase):
+    def test_hints_reveal_a_real_pair_without_marking_it_matched(self):
+        game = MemoryGame(seed=12)
+        first = game.peek_pair()
+        self.assertIsNotNone(first)
+        a, b = first
+        self.assertNotEqual(a, b)
+        self.assertEqual(game.cards[a], game.cards[b])
+        self.assertEqual(game.hints_used, 1)
+        self.assertEqual(game.moves, 0)
+        self.assertEqual(game.matched, set())
+        self.assertEqual(game.choose(a), "ignored")
+        self.assertIsNone(game.peek_pair())
+        game.hide_hint()
+        self.assertEqual(game.choose(a), "first")
+        game.hide_mismatch()
+        second = game.peek_pair()
+        self.assertIsNotNone(second)
+        game.hide_hint()
+        self.assertIsNone(game.peek_pair())
+        self.assertEqual(game.hints_used, 2)
+
+    def test_hint_cannot_bypass_pending_mismatch_or_completed_game(self):
+        game = MemoryGame(seed=9)
+        self.assertEqual(game.choose(0), "first")
+        self.assertIsNone(game.peek_pair())
+        game.flipped.clear()
+        game.matched = set(range(16))
+        self.assertIsNone(game.peek_pair())
+        self.assertEqual(game.hints_used, 0)
+
+
 class GalleryOrFilterTests(unittest.TestCase):
     def test_folder_and_filename_lists_match_either_value(self):
         root = Path("gallery")
