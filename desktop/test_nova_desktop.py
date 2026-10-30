@@ -667,6 +667,25 @@ class GalleryPermissionAndEdgeTests(unittest.TestCase):
             with patch.object(Path, "is_dir", side_effect=PermissionError("denied")):
                 self.assertEqual(collect_gallery_images(root), [])
 
+    def test_inaccessible_child_link_metadata_does_not_hide_siblings(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            blocked = root / "blocked"
+            blocked.mkdir()
+            (blocked / "hidden.png").write_bytes(b"hidden")
+            visible = root / "visible.png"
+            visible.write_bytes(b"visible")
+            original = Path.is_junction
+
+            def is_junction(path):
+                if path == blocked:
+                    raise PermissionError("inaccessible link metadata")
+                return original(path)
+
+            with patch.object(Path, "is_junction", new=is_junction):
+                self.assertEqual(collect_gallery_images(root), [visible])
+
     def test_home_end_jump_to_filtered_edges(self):
         from nova_desktop import NovaDesktop, gallery_shortcut_action
         self.assertEqual(gallery_shortcut_action("Home", 0), "first_image")
