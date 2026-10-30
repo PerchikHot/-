@@ -179,8 +179,14 @@ def is_safe_gallery_preview(path: Path, max_bytes: int = 128 * 1024 * 1024) -> b
     Avoid reading symlink targets outside the chosen folder or oversized
     files that would consume excessive memory. This never modifies photos.
     """
-    return (max_bytes > 0 and not path.is_symlink() and path.is_file()
-            and path.stat().st_size <= max_bytes)
+    if max_bytes <= 0:
+        return False
+    try:
+        return (not path.is_symlink() and path.is_file()
+                and path.stat().st_size <= max_bytes)
+    except OSError:
+        # Files can disappear or become unreadable after the gallery scan.
+        return False
 
 
 def memory_key_to_index(key: str) -> int | None:
