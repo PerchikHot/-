@@ -8,6 +8,25 @@ from pathlib import Path
 from nova_desktop import next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+
+class GalleryOrFilterTests(unittest.TestCase):
+    def test_folder_and_filename_lists_match_either_value(self):
+        root = Path("gallery")
+        erza = root / "Erza" / "portrait.png"
+        rias = root / "Rias" / "scene.jpg"
+        other = root / "Misc" / "draft.png"
+        self.assertTrue(gallery_matches_query(erza, "folder:erza,rias", root))
+        self.assertTrue(gallery_matches_query(rias, "folder:erza,rias", root))
+        self.assertFalse(gallery_matches_query(other, "folder:erza,rias", root))
+        self.assertTrue(gallery_matches_query(erza, "name:portrait,scene", root))
+        self.assertTrue(gallery_matches_query(rias, "name:portrait,scene", root))
+        self.assertFalse(gallery_matches_query(other, "name:portrait,scene", root))
+        self.assertFalse(gallery_matches_query(erza, "-folder:erza,rias", root))
+        self.assertTrue(gallery_matches_query(other, "-folder:erza,rias", root))
+        self.assertFalse(gallery_matches_query(rias, "-name:portrait,scene", root))
+        self.assertFalse(gallery_matches_query(erza, "folder:erza,", root))
+        self.assertFalse(gallery_matches_query(erza, "name:", root))
+
 class GallerySlideshowTests(unittest.TestCase):
     def test_slideshow_speed_cycles_predictably(self):
         self.assertEqual(next_slideshow_delay_ms(5000), 10000)
