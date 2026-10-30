@@ -218,6 +218,10 @@ class GalleryShortcutTests(unittest.TestCase):
         from nova_desktop import gallery_shortcut_action
         self.assertEqual(gallery_shortcut_action("f", 0x4), "focus")
         self.assertEqual(gallery_shortcut_action("F", 0x5), "focus")
+        self.assertEqual(gallery_shortcut_action("l", 0x4), "focus")
+        self.assertEqual(gallery_shortcut_action("L", 0x5), "focus")
+        self.assertEqual(gallery_shortcut_action("r", 0x4), "refresh")
+        self.assertIsNone(gallery_shortcut_action("r", 0))
         self.assertEqual(gallery_shortcut_action("Escape", 0), "clear")
         self.assertEqual(gallery_shortcut_action("F5", 0), "refresh")
         self.assertEqual(gallery_shortcut_action("F5", 0x4), "refresh")
