@@ -50,10 +50,17 @@ def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
                          key=natural_gallery_key)
         for name in sorted(files, key=natural_gallery_key):
             path = Path(current) / name
-            if path.suffix.lower() in IMAGE_TYPES and not path.is_symlink() and path.is_file():
-                images.append(path)
-                if len(images) >= max_images:
-                    return images
+            if path.suffix.lower() not in IMAGE_TYPES:
+                continue
+            try:
+                # A removed or locked file must not abort the entire scan.
+                if path.is_symlink() or not path.is_file():
+                    continue
+            except OSError:
+                continue
+            images.append(path)
+            if len(images) >= max_images:
+                return images
     return images
 
 
