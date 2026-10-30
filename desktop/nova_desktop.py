@@ -46,7 +46,13 @@ def is_linked_gallery_directory(path: Path) -> bool:
 
 def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     """Include nested folders without following links or indexing endlessly."""
-    if max_images <= 0 or is_linked_gallery_directory(root) or not root.is_dir():
+    if max_images <= 0:
+        return []
+    try:
+        if is_linked_gallery_directory(root) or not root.is_dir():
+            return []
+    except OSError:
+        # A removed or permission-denied library should not crash the UI.
         return []
     images: list[Path] = []
     for current, dirs, files in os.walk(root, followlinks=False):
