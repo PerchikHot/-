@@ -293,6 +293,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "clear"
     if keysym == "F2":
         return "copy_filename"
+    if keysym == "F3":
+        return "copy_relative_path"
     if keysym == "F4":
         return "copy_path"
     if keysym == "F5":
@@ -453,6 +455,9 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "copy_filename":
             self._copy_gallery_filename()
             return "break"
+        if self.current_page == "gallery" and action == "copy_relative_path":
+            self._copy_gallery_relative_path()
+            return "break"
         if self.current_page == "gallery" and action == "copy_path":
             self._copy_gallery_path()
             return "break"
@@ -534,7 +539,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F4 — копировать путь  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза,Риас  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F3 — относительный путь  •  F4 — полный путь  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза,Риас  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
@@ -614,6 +619,25 @@ class NovaDesktop(tk.Tk):
         self.clipboard_clear()
         self.clipboard_append(path.name)
         self.gallery_status.config(text="Имя изображения скопировано (F2)")
+
+    def _copy_gallery_relative_path(self):
+        """Copy a shareable relative path without leaking the library root."""
+        selection = self.gallery_list.curselection()
+        if not selection or selection[0] >= len(self.visible_gallery_indices):
+            self.gallery_status.config(text="Сначала выбери изображение в списке")
+            return
+        if self.gallery_root is None:
+            self.gallery_status.config(text="Сначала выбери папку галереи")
+            return
+        path = self.gallery_files[self.visible_gallery_indices[selection[0]]]
+        try:
+            relative = path.relative_to(self.gallery_root)
+        except ValueError:
+            self.gallery_status.config(text="Изображение вне выбранной папки")
+            return
+        self.clipboard_clear()
+        self.clipboard_append(relative.as_posix())
+        self.gallery_status.config(text="Относительный путь скопирован (F3)")
 
     def _copy_gallery_path(self):
         """Copy the selected local file path on request, without opening it."""

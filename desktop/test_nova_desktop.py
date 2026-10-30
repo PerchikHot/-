@@ -356,6 +356,49 @@ class GalleryCopyFilenameTests(unittest.TestCase):
         self.assertNotIn("private", fake.copied)
 
 
+class GalleryCopyRelativePathTests(unittest.TestCase):
+    def test_f3_copies_nested_relative_path_without_private_root(self):
+        from nova_desktop import gallery_shortcut_action, NovaDesktop
+        self.assertEqual(gallery_shortcut_action("F3", 0), "copy_relative_path")
+
+        class FakeList:
+            selection = (0,)
+            def curselection(self):
+                return self.selection
+
+        class FakeStatus:
+            def config(self, **kwargs):
+                self.text = kwargs["text"]
+
+        class FakeGallery:
+            current_page = "gallery"
+            gallery_root = Path("private")
+            gallery_files = [Path("private") / "Erza" / "image.png"]
+            visible_gallery_indices = [0]
+            gallery_list = FakeList()
+            gallery_status = FakeStatus()
+            copied = None
+            def clipboard_clear(self):
+                self.copied = None
+            def clipboard_append(self, value):
+                self.copied = value
+            def _copy_gallery_relative_path(self):
+                return NovaDesktop._copy_gallery_relative_path(self)
+            def attributes(self, name):
+                return False
+
+        fake = FakeGallery()
+        event = type("Event", (), {"keysym": "F3", "state": 0})()
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, event), "break")
+        self.assertEqual(fake.copied, "Erza/image.png")
+        self.assertNotIn("private", fake.copied)
+        fake.gallery_files = [Path("outside") / "image.png"]
+        fake.copied = None
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, event), "break")
+        self.assertIsNone(fake.copied)
+        self.assertIn("вне", fake.gallery_status.text)
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
