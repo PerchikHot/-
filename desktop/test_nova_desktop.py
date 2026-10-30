@@ -27,6 +27,25 @@ class GalleryOrFilterTests(unittest.TestCase):
         self.assertFalse(gallery_matches_query(erza, "folder:erza,", root))
         self.assertFalse(gallery_matches_query(erza, "name:", root))
 
+class GalleryPathListTests(unittest.TestCase):
+    def test_multiple_relative_paths_include_or_exclude_without_file_reads(self):
+        root = Path("gallery")
+        erza = root / "characters" / "erza" / "001.png"
+        rias = root / "characters" / "rias" / "002.jpg"
+        misc = root / "drafts" / "003.png"
+        query = "path:characters/erza,characters/rias"
+        self.assertTrue(gallery_matches_query(erza, query, root))
+        self.assertTrue(gallery_matches_query(rias, query, root))
+        self.assertFalse(gallery_matches_query(misc, query, root))
+        self.assertFalse(gallery_matches_query(erza, "-path:characters/erza,drafts", root))
+        self.assertTrue(gallery_matches_query(rias, "-path:characters/erza,drafts", root))
+        self.assertFalse(gallery_matches_query(erza, "path:characters/erza,", root))
+        self.assertFalse(gallery_matches_query(erza, "-path:", root))
+        self.assertFalse(gallery_matches_query(erza, query, None))
+        # Windows-style separators are normalized only for searching.
+        self.assertTrue(gallery_matches_query(erza, r"path:characters\\erza,characters\\rias", root))
+
+
 class GallerySlideshowTests(unittest.TestCase):
     def test_slideshow_speed_cycles_predictably(self):
         self.assertEqual(next_slideshow_delay_ms(5000), 10000)
