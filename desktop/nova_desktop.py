@@ -281,6 +281,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "choose_folder"
     if keysym == "Escape":
         return "clear"
+    if keysym == "F4":
+        return "copy_path"
     if keysym == "F5":
         return "refresh"
     if keysym == "F6":
@@ -436,6 +438,9 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "choose_folder":
             self._choose_folder()
             return "break"
+        if self.current_page == "gallery" and action == "copy_path":
+            self._copy_gallery_path()
+            return "break"
         if self.current_page == "gallery" and action == "refresh":
             self._reload_folder()
             return "break"
@@ -514,7 +519,7 @@ class NovaDesktop(tk.Tk):
             font=("Segoe UI", 13),
         )
         self.gallery_preview.pack(side="left", fill="both", expand=True)
-        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
+        tk.Label(self.content, text="Ctrl+F — поиск  •  Esc — очистить  •  F4 — копировать путь  •  F5 — обновить  •  F6 — слайд-шоу  •  F7 — скорость  •  F8 — случайное  •  F11 — полный экран  •  ◀/▶ — листать  •  Фильтры: ext:png,jpg  •  folder:Эрза  •  folder:\"Моя папка\"  •  name:001  •  -черновик  •  -ext:gif",
                  bg=BACKGROUND, fg=ACCENT, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 6))
         self._refresh_gallery()
 
@@ -583,6 +588,17 @@ class NovaDesktop(tk.Tk):
         self.gallery_status.config(
             text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
         )
+
+    def _copy_gallery_path(self):
+        """Copy the selected local file path on request, without opening it."""
+        selection = self.gallery_list.curselection()
+        if not selection or selection[0] >= len(self.visible_gallery_indices):
+            self.gallery_status.config(text="Сначала выбери изображение в списке")
+            return
+        path = self.gallery_files[self.visible_gallery_indices[selection[0]]]
+        self.clipboard_clear()
+        self.clipboard_append(str(path.absolute()))
+        self.gallery_status.config(text="Путь к изображению скопирован")
 
     def _selected_image(self, _event=None):
         selection = self.gallery_list.curselection()

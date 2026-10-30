@@ -247,6 +247,47 @@ class FolderPickerShortcutTests(unittest.TestCase):
         self.assertTrue(fake.opened)
 
 
+class GalleryCopyPathTests(unittest.TestCase):
+    def test_f4_copies_selected_local_path_and_handles_empty_selection(self):
+        from nova_desktop import gallery_shortcut_action, NovaDesktop
+        self.assertEqual(gallery_shortcut_action("F4", 0), "copy_path")
+
+        class FakeList:
+            selection = ()
+            def curselection(self):
+                return self.selection
+
+        class FakeStatus:
+            def config(self, **kwargs):
+                self.text = kwargs["text"]
+
+        class FakeGallery:
+            current_page = "gallery"
+            gallery_list = FakeList()
+            gallery_status = FakeStatus()
+            gallery_files = [Path("gallery") / "image.png"]
+            visible_gallery_indices = [0]
+            copied = None
+            def clipboard_clear(self):
+                self.copied = None
+            def clipboard_append(self, value):
+                self.copied = value
+            def _copy_gallery_path(self):
+                return NovaDesktop._copy_gallery_path(self)
+            def attributes(self, name):
+                return False
+
+        fake = FakeGallery()
+        event = type("Event", (), {"keysym": "F4", "state": 0})()
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, event), "break")
+        self.assertIsNone(fake.copied)
+        self.assertIn("выбери", fake.gallery_status.text)
+        fake.gallery_list.selection = (0,)
+        self.assertEqual(NovaDesktop._handle_memory_key(fake, event), "break")
+        self.assertEqual(fake.copied, str(fake.gallery_files[0].absolute()))
+        self.assertIn("скопирован", fake.gallery_status.text)
+
+
 class GalleryShortcutTests(unittest.TestCase):
     def test_ctrl_f_opens_search_and_escape_clears_it(self):
         from nova_desktop import gallery_shortcut_action
