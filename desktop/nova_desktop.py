@@ -41,7 +41,11 @@ def natural_gallery_key(name: str) -> tuple:
 
 def is_linked_gallery_directory(path: Path) -> bool:
     """Treat Windows junctions like symlinks to avoid leaving the chosen tree."""
-    return path.is_symlink() or getattr(path, "is_junction", lambda: False)()
+    try:
+        return path.is_symlink() or getattr(path, "is_junction", lambda: False)()
+    except OSError:
+        # Inaccessible junction metadata must not abort sibling scanning.
+        return True
 
 
 def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
