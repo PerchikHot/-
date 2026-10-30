@@ -291,6 +291,8 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "choose_folder"
     if keysym == "Escape":
         return "clear"
+    if keysym == "F2":
+        return "copy_filename"
     if keysym == "F4":
         return "copy_path"
     if keysym == "F5":
@@ -448,6 +450,9 @@ class NovaDesktop(tk.Tk):
         if self.current_page == "gallery" and action == "choose_folder":
             self._choose_folder()
             return "break"
+        if self.current_page == "gallery" and action == "copy_filename":
+            self._copy_gallery_filename()
+            return "break"
         if self.current_page == "gallery" and action == "copy_path":
             self._copy_gallery_path()
             return "break"
@@ -598,6 +603,17 @@ class NovaDesktop(tk.Tk):
         self.gallery_status.config(
             text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
         )
+
+    def _copy_gallery_filename(self):
+        """Copy only the filename, without exposing the private folder path."""
+        selection = self.gallery_list.curselection()
+        if not selection or selection[0] >= len(self.visible_gallery_indices):
+            self.gallery_status.config(text="Сначала выбери изображение в списке")
+            return
+        path = self.gallery_files[self.visible_gallery_indices[selection[0]]]
+        self.clipboard_clear()
+        self.clipboard_append(path.name)
+        self.gallery_status.config(text="Имя изображения скопировано (F2)")
 
     def _copy_gallery_path(self):
         """Copy the selected local file path on request, without opening it."""
