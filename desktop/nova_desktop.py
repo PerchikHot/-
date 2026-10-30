@@ -444,6 +444,11 @@ class NovaDesktop(tk.Tk):
             return self._step_gallery(-1)
         if self.current_page == "gallery" and action == "next_image":
             return self._step_gallery(1)
+        if self.current_page == "gallery" and action in ("first_image", "last_image"):
+            # Do not steal Home/End when editing the search field.
+            if getattr(event, "widget", None) is getattr(self, "gallery_filter_entry", object()):
+                return
+            return self._jump_gallery(action == "first_image")
         if self.current_page != "memory":
             return
         if is_new_game_key(event.keysym):
@@ -578,6 +583,18 @@ class NovaDesktop(tk.Tk):
         target = gallery_step_index(current, len(self.visible_gallery_indices), direction)
         if target is None:
             return "break"
+        self.gallery_list.selection_clear(0, tk.END)
+        self.gallery_list.selection_set(target)
+        self.gallery_list.see(target)
+        self._selected_image()
+        return "break"
+
+    def _jump_gallery(self, first: bool):
+        """Jump to either edge of the current filtered list."""
+        count = len(self.visible_gallery_indices)
+        if not count:
+            return "break"
+        target = 0 if first else count - 1
         self.gallery_list.selection_clear(0, tk.END)
         self.gallery_list.selection_set(target)
         self.gallery_list.see(target)
