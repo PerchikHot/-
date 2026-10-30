@@ -80,8 +80,8 @@ def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
 
 
 def gallery_step_index(current: int | None, count: int, direction: int) -> int | None:
-    """Navigate filtered images with wraparound; handle empty selections."""
-    if count <= 0 or direction not in (-1, 1):
+    """Navigate filtered images with wraparound, including page-sized jumps."""
+    if count <= 0 or direction == 0:
         return None
     if current is None or not 0 <= current < count:
         return 0 if direction > 0 else count - 1
@@ -295,6 +295,10 @@ def gallery_shortcut_action(keysym: str, state: int) -> str | None:
         return "next_image"
     if keysym == "F11":
         return "toggle_fullscreen"
+    if keysym == "Prior":  # PageUp in Tk
+        return "previous_page"
+    if keysym == "Next":  # PageDown in Tk
+        return "next_page"
     if keysym == "Home":
         return "first_image"
     if keysym == "End":
@@ -448,6 +452,11 @@ class NovaDesktop(tk.Tk):
             return self._step_gallery(-1)
         if self.current_page == "gallery" and action == "next_image":
             return self._step_gallery(1)
+        if self.current_page == "gallery" and action in ("previous_page", "next_page"):
+            # Preserve ordinary PageUp/PageDown editing in the search field.
+            if getattr(event, "widget", None) is getattr(self, "gallery_filter_entry", object()):
+                return
+            return self._step_gallery(-10 if action == "previous_page" else 10)
         if self.current_page == "gallery" and action in ("first_image", "last_image"):
             # Do not steal Home/End when editing the search field.
             if getattr(event, "widget", None) is getattr(self, "gallery_filter_entry", object()):
