@@ -149,6 +149,8 @@ class GalleryShortcutTests(unittest.TestCase):
         self.assertEqual(gallery_shortcut_action("F6", 0), "toggle_slideshow")
         self.assertEqual(gallery_shortcut_action("F7", 0), "cycle_speed")
         self.assertEqual(gallery_shortcut_action("F8", 0), "random_image")
+        self.assertEqual(gallery_shortcut_action("F9", 0), "previous_image")
+        self.assertEqual(gallery_shortcut_action("F10", 0), "next_image")
         self.assertIsNone(gallery_shortcut_action("f", 0))
         self.assertIsNone(gallery_shortcut_action("g", 0x4))
 
