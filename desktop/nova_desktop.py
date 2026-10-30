@@ -39,14 +39,19 @@ def natural_gallery_key(name: str) -> tuple:
                  for part in re.split(r"(\d+)", name))
 
 
+def is_linked_gallery_directory(path: Path) -> bool:
+    """Treat Windows junctions like symlinks to avoid leaving the chosen tree."""
+    return path.is_symlink() or getattr(path, "is_junction", lambda: False)()
+
+
 def collect_gallery_images(root: Path, max_images: int = 20_000) -> list[Path]:
     """Include nested folders without following links or indexing endlessly."""
-    if max_images <= 0 or root.is_symlink() or not root.is_dir():
+    if max_images <= 0 or is_linked_gallery_directory(root) or not root.is_dir():
         return []
     images: list[Path] = []
     for current, dirs, files in os.walk(root, followlinks=False):
         # Do not follow junctions/symlinks to unrelated or cyclic directories.
-        dirs[:] = sorted((d for d in dirs if not (Path(current) / d).is_symlink()),
+        dirs[:] = sorted((d for d in dirs if not is_linked_gallery_directory(Path(current) / d)),
                          key=natural_gallery_key)
         for name in sorted(files, key=natural_gallery_key):
             path = Path(current) / name
