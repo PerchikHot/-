@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageOps, ImageTk
+from memory_stats import default_stats_path, load_memory_stats, record_memory_win, save_memory_stats
 
 BACKGROUND = "#090e1c"
 PANEL = "#172443"
@@ -330,6 +331,8 @@ class NovaDesktop(tk.Tk):
         self.minsize(800, 560)
         self.configure(bg=BACKGROUND)
         self.game = MemoryGame()
+        self.stats_path = default_stats_path()
+        self.memory_stats = load_memory_stats(self.stats_path)
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
         self.gallery_root: Path | None = None
@@ -408,7 +411,9 @@ class NovaDesktop(tk.Tk):
     def _render_memory(self):
         if not self.buttons:
             return
-        self.status.config(text=f"Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8")
+        best = self.memory_stats["best_moves"]
+        record = f"Рекорд: {best} ходов" if best is not None else "Рекорд: —"
+        self.status.config(text=f"Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Побед: {self.memory_stats['wins']}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched
             button.config(
@@ -423,7 +428,14 @@ class NovaDesktop(tk.Tk):
         if result == "miss":
             self._pending_hide = self.after(700, self._hide_mismatch)
         elif result == "win":
-            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!")
+            self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
+            try:
+                save_memory_stats(self.stats_path, self.memory_stats)
+            except OSError:
+                # An unavailable user profile must not prevent finishing a game.
+                pass
+            self._render_memory()
+            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nРекорд: {self.memory_stats['best_moves']} ходов.")
 
     def _hide_mismatch(self):
         self._pending_hide = None
