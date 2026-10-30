@@ -659,5 +659,51 @@ class GalleryPreviewSafetyTests(unittest.TestCase):
             self.assertFalse(is_safe_gallery_preview(link))
             self.assertEqual(target.read_bytes(), b"image")
 
+class GalleryPermissionAndEdgeTests(unittest.TestCase):
+    def test_permission_denied_gallery_root_returns_empty(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(Path, "is_dir", side_effect=PermissionError("denied")):
+                self.assertEqual(collect_gallery_images(root), [])
+
+    def test_home_end_jump_to_filtered_edges(self):
+        from nova_desktop import NovaDesktop, gallery_shortcut_action
+        self.assertEqual(gallery_shortcut_action("Home", 0), "first_image")
+        self.assertEqual(gallery_shortcut_action("End", 0), "last_image")
+
+        class FakeList:
+            def __init__(self):
+                self.selected = None
+                self.seen = None
+
+            def selection_clear(self, *args):
+                self.selected = None
+
+            def selection_set(self, index):
+                self.selected = index
+
+            def see(self, index):
+                self.seen = index
+
+        class FakeGallery:
+            visible_gallery_indices = [3, 8, 11]
+            gallery_list = FakeList()
+            opened = 0
+
+            def _selected_image(self):
+                self.opened += 1
+
+        fake = FakeGallery()
+        self.assertEqual(NovaDesktop._jump_gallery(fake, False), "break")
+        self.assertEqual(fake.gallery_list.selected, 2)
+        self.assertEqual(NovaDesktop._jump_gallery(fake, True), "break")
+        self.assertEqual(fake.gallery_list.selected, 0)
+        self.assertEqual(fake.opened, 2)
+        fake.visible_gallery_indices = []
+        self.assertEqual(NovaDesktop._jump_gallery(fake, True), "break")
+        self.assertEqual(fake.opened, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
