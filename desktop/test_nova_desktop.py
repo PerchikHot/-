@@ -458,6 +458,16 @@ class QuotedGallerySearchTests(unittest.TestCase):
             self.assertEqual(image.read_bytes(), b"unchanged")
 
 
+class CrossPlatformFolderFilterTests(unittest.TestCase):
+    def test_windows_style_paths_match_folders_even_on_linux_ci(self):
+        from nova_desktop import gallery_matches_query
+        path = Path(r'C:\\gallery\\anime\\erza.png')
+        root = Path(r'C:\\gallery')
+        self.assertTrue(gallery_matches_query(path, 'folder:anime', root))
+        self.assertFalse(gallery_matches_query(path, '-folder:anime', root))
+        self.assertTrue(gallery_matches_query(path, 'path:anime', root))
+
+
 class GalleryPathFilterTests(unittest.TestCase):
     def test_relative_path_filters_include_and_exclude_nested_images(self):
         root = Path('gallery')
