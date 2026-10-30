@@ -488,7 +488,11 @@ class NovaDesktop(tk.Tk):
         self._refresh_gallery()
 
     def _choose_folder(self):
-        folder = filedialog.askdirectory(title="Папка с изображениями")
+        # Reopen the picker in the current library rather than at the disk root.
+        options = {"title": "Папка с изображениями"}
+        if self.gallery_root is not None and self.gallery_root.is_dir():
+            options["initialdir"] = str(self.gallery_root)
+        folder = filedialog.askdirectory(**options)
         if not folder:
             return
         root = Path(folder)
