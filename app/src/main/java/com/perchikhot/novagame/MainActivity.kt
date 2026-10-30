@@ -272,11 +272,29 @@ class MainActivity : Activity() {
                     android.graphics.Bitmap.createBitmap(square,(i%3)*tileSize,(i/3)*tileSize,tileSize,tileSize)
                 }
                 val cells=(0..8).toMutableList()
+                var moves=0
+                var rewarded=false
+                val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
+                val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
+                val progressLabel=TextView(this).apply {
+                    textSize=17f
+                    setTextColor(Color.rgb(177,215,255))
+                    gravity=Gravity.CENTER
+                    text="Ходы: 0 • Рекорд: ${previousBest ?: "—"}"
+                }
+                root.addView(progressLabel,1)
                 repeat(90) {
                     val z=cells.indexOf(8)
                     val neighbors=listOf(z-3,z+3,if(z%3>0)z-1 else -1,if(z%3<2)z+1 else -1).filter {it in 0..8}
                     val n=neighbors.random()
                     val t=cells[n];cells[n]=8;cells[z]=t
+                }
+                // A random walk can return to the solved board. Start with a
+                // real puzzle, never a zero-move reward.
+                if(cells==(0..8).toList()) {
+                    val z=cells.indexOf(8)
+                    val n=z-1
+                    cells[z]=cells[n];cells[n]=8
                 }
                 val board=android.widget.GridLayout(this).apply {columnCount=3;rowCount=3}
                 root.addView(board,1,LinearLayout.LayoutParams(-1,dp(360)))
@@ -299,10 +317,18 @@ class MainActivity : Activity() {
                             val z=cells.indexOf(8)
                             if((i/3==z/3 && kotlin.math.abs(i-z)==1)||kotlin.math.abs(i-z)==3) {
                                 cells[z]=cells[i];cells[i]=8
+                                moves++
                                 draw()
-                                if(cells==(0..8).toList()) {
+                                progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}"
+                                if(!rewarded && cells==(0..8).toList()) {
+                                    rewarded=true
+                                    val best=records.getInt("best_moves_3x3",0)
+                                    if(best<=0 || moves<best) {
+                                        records.edit().putInt("best_moves_3x3",moves).apply()
+                                    }
+                                    progressLabel.text="Собрано за $moves ходов • Рекорд: ${records.getInt("best_moves_3x3",moves)}"
                                     award(30)
-                                    label("Пазл собран! +30 очков")
+                                    label("Пазл собран! +30 очков. Для новой попытки нажми «Начать заново».")
                                 }
                             }
                         }
