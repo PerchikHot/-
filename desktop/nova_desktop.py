@@ -113,7 +113,9 @@ def gallery_matches_query(path: Path, query: str, root: Path | None = None) -> b
     # Path separators differ between Windows and Linux CI; normalize only
     # the searchable representation, never the user's actual file paths.
     text = searchable.replace('\\', '/').casefold()
-    folder_text = str(Path(searchable).parent).casefold() if root is not None else ''
+    # pathlib on Linux treats Windows backslashes as ordinary characters.
+    # Derive the folder from normalized relative text for portable filters.
+    folder_text = text.rsplit('/', 1)[0] if root is not None and '/' in text else ''
     # Quoted filters support character/folder names containing spaces.
     # An unfinished quote is an invalid filter, not a match-all query.
     try:
