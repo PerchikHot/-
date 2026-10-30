@@ -458,6 +458,19 @@ class QuotedGallerySearchTests(unittest.TestCase):
             self.assertEqual(image.read_bytes(), b"unchanged")
 
 
+class GalleryPathFilterTests(unittest.TestCase):
+    def test_relative_path_filters_include_and_exclude_nested_images(self):
+        root = Path('gallery')
+        image = root / 'Эрза' / 'Канон' / '001.png'
+        self.assertTrue(gallery_matches_query(image, 'path:эрза/канон', root))
+        self.assertFalse(gallery_matches_query(image, 'path:эрза/пляж', root))
+        self.assertFalse(gallery_matches_query(image, '-path:эрза/канон', root))
+        self.assertTrue(gallery_matches_query(image, '-path:эрза/пляж', root))
+        self.assertFalse(gallery_matches_query(image, 'path:', root))
+        self.assertFalse(gallery_matches_query(image, '-path:', root))
+        self.assertFalse(gallery_matches_query(image, 'path:эрза', None))
+
+
 class NaturalGalleryOrderTests(unittest.TestCase):
     def test_numbered_files_are_sorted_numerically(self):
         self.assertEqual(sorted(['10.png', '2.png', '1.PNG'], key=natural_gallery_key),
