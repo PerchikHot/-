@@ -41,6 +41,37 @@ class MemoryHintTests(unittest.TestCase):
         self.assertEqual(game.hints_used, 0)
 
 
+class MemoryStreakTests(unittest.TestCase):
+    def test_streak_increases_on_matches_and_resets_after_mistake(self):
+        game = MemoryGame(seed=12)
+        first_symbol = game.cards[0]
+        partner = next(i for i in range(1, 16) if game.cards[i] == first_symbol)
+        self.assertEqual(game.choose(0), "first")
+        self.assertEqual(game.choose(partner), "match")
+        self.assertEqual((game.match_streak, game.best_streak), (1, 1))
+        remaining = [i for i in range(16) if i not in game.matched]
+        a = remaining[0]
+        b = next(i for i in remaining[1:] if game.cards[i] != game.cards[a])
+        self.assertEqual(game.choose(a), "first")
+        self.assertEqual(game.choose(b), "miss")
+        self.assertEqual((game.match_streak, game.best_streak), (0, 1))
+        game.hide_mismatch()
+        remaining = [i for i in range(16) if i not in game.matched]
+        a = remaining[0]
+        b = next(i for i in remaining[1:] if game.cards[i] == game.cards[a])
+        self.assertEqual(game.choose(a), "first")
+        self.assertEqual(game.choose(b), "match")
+        self.assertEqual((game.match_streak, game.best_streak), (1, 1))
+
+    def test_perfect_run_keeps_full_streak(self):
+        game = MemoryGame(seed=3, perfect_mode=True)
+        for symbol in SYMBOLS:
+            pair = [i for i, card in enumerate(game.cards) if card == symbol]
+            game.choose(pair[0])
+            game.choose(pair[1])
+        self.assertEqual((game.match_streak, game.best_streak), (8, 8))
+
+
 class PerfectChallengeTests(unittest.TestCase):
     def test_first_mismatch_ends_game_and_blocks_future_moves(self):
         game = MemoryGame(seed=12, perfect_mode=True)
