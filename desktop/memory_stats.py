@@ -105,3 +105,29 @@ def record_daily_challenge_win(stats: dict, moves: int, day: str, pairs: int = 8
         stats = {"date": day, "wins": 0, "best_moves": None}
     result = record_memory_win(stats, moves, pairs)
     return {"date": day, **result}
+
+
+def load_best_score(path: Path) -> int:
+    """Normal-mode score only. Challenges and practice never write this file."""
+    try:
+        if path.stat().st_size > 256:
+            return 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        score = data.get("best_score") if isinstance(data, dict) else None
+        return score if type(score) is int and 0 <= score <= 10_000_000 else 0
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return 0
+
+
+def updated_best_score(previous: int, score: int, eligible: bool) -> int:
+    if type(previous) is not int or not 0 <= previous <= 10_000_000:
+        raise ValueError("Invalid previous score")
+    if type(score) is not int or not 0 <= score <= 10_000_000:
+        raise ValueError("Invalid round score")
+    return max(previous, score) if eligible else previous
+
+
+def save_best_score(path: Path, score: int) -> None:
+    if type(score) is not int or not 0 <= score <= 10_000_000:
+        raise ValueError("Invalid score")
+    save_memory_stats(path, {"best_score": score})
