@@ -225,6 +225,7 @@ class MainActivity : Activity() {
         val dailyKey="day_${dailyDay}_pairs_${chosen.size}"
         val records=getSharedPreferences("memory_records",MODE_PRIVATE)
         val recordKey="best_mistakes_${chosen.size}"
+        val bestPointsKey="best_points_${chosen.size}"
         val winsKey="wins_${chosen.size}"
         val perfectWinsKey="perfect_wins_${chosen.size}"
         val perfectBonusKey="perfect_${dailyDay}_pairs_${chosen.size}"
@@ -242,7 +243,7 @@ class MainActivity : Activity() {
             label("Испытание ${dailyDay} • ${chosen.size} пары • " +
                 (if(dailyPrefs.getBoolean(dailyKey,false)) "Награда уже получена" else "Первая победа без подсказок: двойные очки"),14)
         } else {
-            label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок",14)
+            label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок • Лучшие очки: ${records.getInt(bestPointsKey,0)}",14)
         }
         add(if(daily) "Обычная игра" else "Испытание дня") {
             memory(pairLimit,!daily,false)
@@ -346,7 +347,7 @@ class MainActivity : Activity() {
                         bestStreak=maxOf(bestStreak,streak)
                         // Same combo score as the Windows preview. It is a
                         // round-only metric, separate from the shop currency.
-                        roundPoints += 100 + 25 * (streak - 1)
+                        roundPoints += MemoryScore.matchPoints(streak)
                         progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints" +
                             (if(limited) " • Ходы: $moves/$maxMoves" else "")
                         if(!completed && opened.size==values.size) {
@@ -364,9 +365,13 @@ class MainActivity : Activity() {
                                 if(firstPerfectWin) dailyPrefs.edit()
                                     .putBoolean(perfectBonusKey,true).apply()
                             }
-                            if(!practice && !limited && !timeTrial && hintsUsed==0 && !daily && !perfection) records.edit()
+                            val eligibleRecord = !practice && !limited && !timeTrial &&
+                                hintsUsed==0 && !daily && !perfection
+                            if(eligibleRecord) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
-                                .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
+                                .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes))
+                                .putInt(bestPointsKey,MemoryScore.bestNormalScore(
+                                    records.getInt(bestPointsKey,0),roundPoints,true)).apply()
                             val firstDailyWin=!practice && daily && hintsUsed==0 &&
                                 !dailyPrefs.getBoolean(dailyKey,false)
                             if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
@@ -390,7 +395,8 @@ class MainActivity : Activity() {
                             // Same efficiency rating as the Windows memory game.
                             // This is informational and never modifies records.
                             val stars = "★".repeat(MemoryRating.stars(chosen.size, moves, true))
-                            label("Оценка: $stars • $moves ходов")
+                            label("Оценка: $stars • $moves ходов" +
+                                (if(eligibleRecord) " • Лучший счёт: ${records.getInt(bestPointsKey,0)}" else ""))
                             label(if(reward>0) "Все пары найдены! Счёт раунда: $roundPoints • +$reward монет"
                                 else "Все пары найдены! Счёт раунда: $roundPoints • Без повторной награды")
                         }
