@@ -263,9 +263,11 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
-        val values=if(practice) replayValues!!.toList() else
-            (chosen.indices.toList()+chosen.indices.toList())
-                .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
+        // The daily board layout is identical on Android and Windows for
+        // the same date and number of pairs; each device uses its own images.
+        val values=if(practice) replayValues!!.toList() else if(daily)
+            DailyMemoryLayout.positions(dailyDay, chosen.size) else
+            (chosen.indices.toList()+chosen.indices.toList()).shuffled()
         add("Повторить раскладку (без наград)") {
             memory(chosen.size,daily,perfection,chosen,values,limited,timeTrial)
         }
