@@ -375,7 +375,9 @@ class NovaDesktop(tk.Tk):
         self.minsize(800, 560)
         self.configure(bg=BACKGROUND)
         self.pair_count = 8
-        self.game = MemoryGame(pair_count=self.pair_count)
+        self.last_memory_seed = random.SystemRandom().randrange(1 << 63)
+        self.practice_replay = False
+        self.game = MemoryGame(seed=self.last_memory_seed, pair_count=self.pair_count)
         self.base_stats_path = default_stats_path()
         self.stats_path = self.base_stats_path
         self.memory_stats = load_memory_stats(self.stats_path)
@@ -451,6 +453,7 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
+        self._button(top, "Повторить раскладку", self._replay_memory_board).pack(side="right", padx=6)
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
                      self._toggle_daily_mode).pack(side="right", padx=6)
@@ -492,6 +495,8 @@ class NovaDesktop(tk.Tk):
         else:
             wins = self.memory_stats["wins"]
             mode = "Обычная игра"
+        if self.practice_replay:
+            mode += " — тренировка (без рекордов)"
         hint_status = "Без подсказок" if self.perfect_mode else f"Подсказки: {2 - self.game.hints_used}/2"
         self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
@@ -512,7 +517,7 @@ class NovaDesktop(tk.Tk):
         elif result == "win":
             # Assisted wins count as completed games, but do not distort
             # the unassisted personal record.
-            if self.game.hints_used == 0:
+            if self.game.hints_used == 0 and not self.practice_replay:
                 if self.perfect_mode:
                     self.perfect_stats = record_memory_win(self.perfect_stats, self.game.moves, self.pair_count)
                 elif self.daily_mode:
@@ -521,7 +526,9 @@ class NovaDesktop(tk.Tk):
                 else:
                     self.memory_stats = record_memory_win(self.memory_stats, self.game.moves, self.pair_count)
             try:
-                if self.perfect_mode:
+                if self.practice_replay:
+                    pass
+                elif self.perfect_mode:
                     save_memory_stats(self.perfect_path, self.perfect_stats)
                 elif self.daily_mode:
                     save_memory_stats(self.daily_path, self.daily_stats)
@@ -533,7 +540,9 @@ class NovaDesktop(tk.Tk):
             self._render_memory()
             best = (self.perfect_stats["best_moves"] if self.perfect_mode else
                     self.daily_stats["best_moves"] if self.daily_mode else self.memory_stats["best_moves"])
-            suffix = "С подсказками — рекорд не изменён." if self.game.hints_used else f"Рекорд: {best} ходов."
+            suffix = ("Повтор раскладки — рекорды не изменяются." if self.practice_replay else
+                      "С подсказками — рекорд не изменён." if self.game.hints_used else
+                      f"Рекорд: {best} ходов.")
             messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОчки: {self.game.score}\n{suffix}")
 
     def _memory_hint(self):
@@ -648,7 +657,11 @@ class NovaDesktop(tk.Tk):
             self.daily_mode = False
         self._new_game()
 
-    def _new_game(self):
+    def _replay_memory_board(self):
+        """Replay the current layout for practice, never counting records."""
+        self._new_game(reuse_seed=True)
+
+    def _new_game(self, reuse_seed: bool = False):
         # Cancel the old game's pending mismatch before replacing its state.
         if self._pending_hide is not None:
             self.after_cancel(self._pending_hide)
@@ -656,14 +669,18 @@ class NovaDesktop(tk.Tk):
         if self._pending_hint is not None:
             self.after_cancel(self._pending_hint)
             self._pending_hint = None
+        self.practice_replay = reuse_seed
         if self.daily_mode:
             self.daily_day = date.today().isoformat()
             self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
-            self.game = MemoryGame(seed=daily_challenge_seed(self.daily_day, self.pair_count),
-                                   pair_count=self.pair_count)
+            if not reuse_seed:
+                self.last_memory_seed = daily_challenge_seed(self.daily_day, self.pair_count)
+            self.game = MemoryGame(seed=self.last_memory_seed, pair_count=self.pair_count)
         else:
-            self.game = MemoryGame(perfect_mode=self.perfect_mode,
-                                   pair_count=self.pair_count)
+            if not reuse_seed:
+                self.last_memory_seed = random.SystemRandom().randrange(1 << 63)
+            self.game = MemoryGame(seed=self.last_memory_seed,
+                                   perfect_mode=self.perfect_mode, pair_count=self.pair_count)
         self._show("memory")
 
     def _gallery_page(self):
