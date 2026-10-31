@@ -267,6 +267,8 @@ class MemoryGame:
         self.moves = 0
         self.hints_used = 0
         self.hint_indices: set[int] = set()
+        self.match_streak = 0
+        self.best_streak = 0
 
     def peek_pair(self) -> tuple[int, int] | None:
         """Reveal one unmatched pair, at most twice per game.
@@ -302,8 +304,11 @@ class MemoryGame:
         left, right = self.flipped
         if self.cards[left] == self.cards[right]:
             self.matched.update((left, right))
+            self.match_streak += 1
+            self.best_streak = max(self.best_streak, self.match_streak)
             self.flipped.clear()
             return "win" if len(self.matched) == len(self.cards) else "match"
+        self.match_streak = 0
         if self.perfect_mode:
             self.failed = True
             return "lost"
@@ -477,7 +482,7 @@ class NovaDesktop(tk.Tk):
             wins = self.memory_stats["wins"]
             mode = "Обычная игра"
         hint_status = "Без подсказок" if self.perfect_mode else f"Подсказки: {2 - self.game.hints_used}/2"
-        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  {hint_status}  •  Побед: {wins}  •  {record}")
+        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
             button.config(
