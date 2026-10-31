@@ -186,8 +186,8 @@ class MainActivity : Activity() {
         }
         return buttons
     }
-    private fun memory(pairLimit:Int=6) {
-        screen("ПАМЯТЬ • ФОТО-КАРТОЧКИ")
+    private fun memory(pairLimit:Int=6, daily:Boolean=false) {
+        screen(if(daily) "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ" else "ПАМЯТЬ • ФОТО-КАРТОЧКИ")
         label("Открывай по две карточки и находи одинаковые изображения.",15)
         val imported=ImageLibrary.imported(this)
         val shop=getSharedPreferences("unlock_shop",MODE_PRIVATE)
@@ -197,19 +197,36 @@ class MainActivity : Activity() {
             back()
             return
         }
-        val chosen=allowed.shuffled().take(minOf(pairLimit,allowed.size))
+        // A daily seed gives the same cards and positions for the same
+        // unlocked library, day and difficulty. No server or account needed.
+        val dailyDay=java.time.LocalDate.now().toString()
+        val dailySeed=dailyDay.hashCode() xor (pairLimit * 7919)
+        val chosen=(if(daily) allowed.sortedBy {it.absolutePath}
+            .shuffled(Random(dailySeed)) else allowed.shuffled())
+            .take(minOf(pairLimit,allowed.size))
+        val dailyPrefs=getSharedPreferences("memory_daily",MODE_PRIVATE)
+        val dailyKey="day_${dailyDay}_pairs_${chosen.size}"
         val records=getSharedPreferences("memory_records",MODE_PRIVATE)
         val recordKey="best_mistakes_${chosen.size}"
         val winsKey="wins_${chosen.size}"
         val previousBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
-        label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок",14)
+        if(daily) {
+            label("Испытание ${dailyDay} • ${chosen.size} пары • " +
+                (if(dailyPrefs.getBoolean(dailyKey,false)) "Награда уже получена" else "Первая победа без подсказок: двойные очки"),14)
+        } else {
+            label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок",14)
+        }
+        add(if(daily) "Обычная игра" else "Испытание дня") {
+            memory(pairLimit,!daily)
+        }
         val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
-            difficulties.addView(button("$pairs пары") {memory(pairs)},
+            difficulties.addView(button("$pairs пары") {memory(pairs,daily)},
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
-        val values=(chosen.indices.toList()+chosen.indices.toList()).shuffled()
+        val values=(chosen.indices.toList()+chosen.indices.toList())
+            .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
         val thumbs=chosen.map {file ->
             android.graphics.BitmapFactory.decodeFile(file.absolutePath,
                 android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
@@ -252,15 +269,24 @@ class MainActivity : Activity() {
                             val oldBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
                             // Assisted completions still award points, but never alter
                             // the unassisted win count or personal best.
-                            if(hintsUsed==0) records.edit()
+                            if(hintsUsed==0 && !daily) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
-                            val reward=if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
-                            award(reward)
-                            progress.text=if(hintsUsed>0)
-                                "Победа с подсказками! Ошибок: $mistakes • Рекорд не изменён"
-                                else "Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
-                            label("Все пары найдены! +$reward очков")
+                            val firstDailyWin=daily && hintsUsed==0 &&
+                                !dailyPrefs.getBoolean(dailyKey,false)
+                            if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
+                            val reward=if(daily) {
+                                if(firstDailyWin) chosen.size*10 else 0
+                            } else if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
+                            if(reward>0) award(reward)
+                            progress.text=when {
+                                hintsUsed>0 -> "Победа с подсказками! Рекорды и награда дня не изменены"
+                                daily && !firstDailyWin -> "Испытание дня повторено • награда уже получена"
+                                daily -> "Испытание дня пройдено! +$reward очков"
+                                else -> "Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
+                            }
+                            label(if(reward>0) "Все пары найдены! +$reward очков"
+                                else "Все пары найдены! Без повторной награды")
                         }
                     } else {
                         mistakes++
