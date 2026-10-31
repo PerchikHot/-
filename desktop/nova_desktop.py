@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageOps, ImageTk
+from daily_layout import daily_positions
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win)
@@ -776,6 +777,11 @@ class NovaDesktop(tk.Tk):
             if not reuse_seed:
                 self.last_memory_seed = daily_challenge_seed(self.daily_day, self.pair_count)
             self.game = MemoryGame(seed=self.last_memory_seed, pair_count=self.pair_count)
+            # Same pair positions as Android, regardless of Python/Kotlin RNG.
+            # Local symbol/image libraries remain platform-specific.
+            self.game.cards = [
+                SYMBOLS[i] for i in daily_positions(self.daily_day, self.pair_count)
+            ]
         else:
             if not reuse_seed:
                 self.last_memory_seed = random.SystemRandom().randrange(1 << 63)
