@@ -269,7 +269,7 @@ class MainActivity : Activity() {
             buttons[i].background=panel(0xD032285B.toInt(),14)
         }
         buttons=grid(3,values.size) {i,_ ->
-            if(!locked && i !in opened && i!=first) {
+            if(!completed && !locked && i !in opened && i!=first) {
                 show(i)
                 if(first<0) first=i else {
                     val prev=first
