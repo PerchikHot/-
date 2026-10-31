@@ -251,6 +251,7 @@ class MainActivity : Activity() {
         var mistakes=0
         var streak=0
         var bestStreak=0
+        var roundPoints=0
         var completed=false
         var hintsUsed=0
         val progress=TextView(this).apply {
@@ -280,7 +281,10 @@ class MainActivity : Activity() {
                         opened.add(prev);opened.add(i)
                         streak++
                         bestStreak=maxOf(bestStreak,streak)
-                        progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak (макс. $bestStreak)"
+                        // Same combo score as the Windows preview. It is a
+                        // round-only metric, separate from the shop currency.
+                        roundPoints += 100 + 25 * (streak - 1)
+                        progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints"
                         if(!completed && opened.size==values.size) {
                             completed=true
                             val wins=records.getInt(winsKey,0).coerceAtLeast(0)
@@ -314,16 +318,16 @@ class MainActivity : Activity() {
                                 hintsUsed>0 -> "Победа с подсказками! Рекорды и награда дня не изменены"
                                 daily && !firstDailyWin -> "Испытание дня повторено • награда уже получена"
                                 daily -> "Испытание дня пройдено! +$reward очков"
-                                else -> "Победа! Ошибок: $mistakes • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
+                                else -> "Победа! Ошибок: $mistakes • Очки: $roundPoints • Рекорд: ${minOf(oldBest ?: mistakes,mistakes)}"
                             }
-                            label(if(reward>0) "Все пары найдены! +$reward очков"
-                                else "Все пары найдены! Без повторной награды")
+                            label(if(reward>0) "Все пары найдены! Счёт раунда: $roundPoints • +$reward монет"
+                                else "Все пары найдены! Счёт раунда: $roundPoints • Без повторной награды")
                         }
                     } else {
                         mistakes++
                         streak=0
                         progress.text=if(perfection) "Ошибка! Раунд завершён • ${opened.size/2}/${chosen.size} пар"
-                            else "Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak (макс. $bestStreak)"
+                            else "Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints"
                         if(perfection) {
                             completed=true
                             label("Испытание провалено. Начни новый раунд без ошибок.")
@@ -354,7 +358,7 @@ class MainActivity : Activity() {
                     locked=true
                     show(a);show(b)
                     hintButton.text="Подсказок осталось: ${2-hintsUsed}"
-                    progress.text="Подсказка ${hintsUsed}/2 • Рекорд без подсказок"
+                    progress.text="Подсказка ${hintsUsed}/2 • Очки: $roundPoints • Рекорд без подсказок"
                     hintButton.postDelayed({
                         if(!isFinishing && !isDestroyed) {
                             if(a !in opened) hide(a)
