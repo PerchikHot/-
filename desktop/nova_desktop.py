@@ -258,11 +258,14 @@ class MemoryGame:
     """State machine kept independent of tkinter for deterministic tests."""
 
     def __init__(self, seed: int | None = None, perfect_mode: bool = False,
-                 pair_count: int = 8):
+                 pair_count: int = 8, move_limit: int | None = None):
         self.perfect_mode = perfect_mode
         self.failed = False
         if pair_count not in (2, 4, 6, 8):
             raise ValueError("Unsupported memory difficulty")
+        if move_limit is not None and (type(move_limit) is not int or move_limit < pair_count):
+            raise ValueError('Move limit must allow at least one move per pair')
+        self.move_limit = move_limit
         self.cards = list(SYMBOLS[:pair_count]) * 2
         random.Random(seed).shuffle(self.cards)
         self.matched: set[int] = set()
@@ -282,7 +285,7 @@ class MemoryGame:
         Hints are never counted as record-eligible wins. A pending mismatch
         cannot be bypassed by requesting a hint.
         """
-        if self.perfect_mode or self.failed or self.hints_used >= 2 or self.flipped or self.hint_indices:
+        if self.perfect_mode or self.move_limit is not None or self.failed or self.hints_used >= 2 or self.flipped or self.hint_indices:
             return None
         for index, symbol in enumerate(self.cards):
             if index in self.matched:
@@ -314,9 +317,14 @@ class MemoryGame:
             self.best_streak = max(self.best_streak, self.match_streak)
             self.score += 100 + 25 * (self.match_streak - 1)
             self.flipped.clear()
-            return "win" if len(self.matched) == len(self.cards) else "match"
+            if len(self.matched) == len(self.cards):
+                return 'win'
+            if self.move_limit is not None and self.moves >= self.move_limit:
+                self.failed = True
+                return 'lost'
+            return 'match'
         self.match_streak = 0
-        if self.perfect_mode:
+        if self.perfect_mode or (self.move_limit is not None and self.moves >= self.move_limit):
             self.failed = True
             return "lost"
         return "miss"
@@ -384,6 +392,7 @@ class NovaDesktop(tk.Tk):
         self.perfect_path = self.stats_path.with_name("perfect_challenge.json")
         self.perfect_stats = load_memory_stats(self.perfect_path)
         self.perfect_mode = False
+        self.move_limit_mode = False
         self.daily_mode = False
         self.daily_day = date.today().isoformat()
         self.daily_path = self.stats_path.with_name("daily_challenge.json")
@@ -457,9 +466,11 @@ class NovaDesktop(tk.Tk):
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
                      self._toggle_daily_mode).pack(side="right", padx=6)
+        self._button(top, "Без лимита" if self.move_limit_mode else "Лимит ходов",
+                     self._toggle_move_limit_mode).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.perfect_mode else "Без ошибок",
                      self._toggle_perfect_mode).pack(side="right", padx=6)
-        if not self.perfect_mode:
+        if not self.perfect_mode and not self.move_limit_mode:
             self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
         self._label(top, "Карточки: 1–9, A–G • N — новая игра", 10).pack(side="right", padx=12)
         grid = tk.Frame(self.content, bg=BACKGROUND)
@@ -482,7 +493,11 @@ class NovaDesktop(tk.Tk):
             return
         best = self.memory_stats["best_moves"]
         record = f"Рекорд: {best} ходов" if best is not None else "Рекорд: —"
-        if self.perfect_mode:
+        if self.move_limit_mode:
+            wins = self.memory_stats['wins']
+            mode = 'Лимит ходов' + (' — поражение' if self.game.failed else '')
+            record = f'Лимит: {self.game.move_limit}'
+        elif self.perfect_mode:
             best = self.perfect_stats["best_moves"]
             record = f"Рекорд: {best} ходов" if best is not None else "Рекорд: —"
             wins = self.perfect_stats["wins"]
@@ -497,7 +512,7 @@ class NovaDesktop(tk.Tk):
             mode = "Обычная игра"
         if self.practice_replay:
             mode += " — тренировка (без рекордов)"
-        hint_status = "Без подсказок" if self.perfect_mode else f"Подсказки: {2 - self.game.hints_used}/2"
+        hint_status = "Без подсказок" if self.perfect_mode or self.move_limit_mode else f"Подсказки: {2 - self.game.hints_used}/2"
         self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
@@ -517,7 +532,7 @@ class NovaDesktop(tk.Tk):
         elif result == "win":
             # Assisted wins count as completed games, but do not distort
             # the unassisted personal record.
-            if self.game.hints_used == 0 and not self.practice_replay:
+            if self.game.hints_used == 0 and not self.practice_replay and not self.move_limit_mode:
                 if self.perfect_mode:
                     self.perfect_stats = record_memory_win(self.perfect_stats, self.game.moves, self.pair_count)
                 elif self.daily_mode:
@@ -526,7 +541,7 @@ class NovaDesktop(tk.Tk):
                 else:
                     self.memory_stats = record_memory_win(self.memory_stats, self.game.moves, self.pair_count)
             try:
-                if self.practice_replay:
+                if self.practice_replay or self.move_limit_mode:
                     pass
                 elif self.perfect_mode:
                     save_memory_stats(self.perfect_path, self.perfect_stats)
@@ -540,13 +555,14 @@ class NovaDesktop(tk.Tk):
             self._render_memory()
             best = (self.perfect_stats["best_moves"] if self.perfect_mode else
                     self.daily_stats["best_moves"] if self.daily_mode else self.memory_stats["best_moves"])
-            suffix = ("Повтор раскладки — рекорды не изменяются." if self.practice_replay else
+            suffix = ('Режим с лимитом — рекорды не изменяются.' if self.move_limit_mode else
+                      "Повтор раскладки — рекорды не изменяются." if self.practice_replay else
                       "С подсказками — рекорд не изменён." if self.game.hints_used else
                       f"Рекорд: {best} ходов.")
             messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОчки: {self.game.score}\n{suffix}")
 
     def _memory_hint(self):
-        if self.current_page != "memory" or self.perfect_mode or self._pending_hide is not None:
+        if self.current_page != "memory" or self.perfect_mode or self.move_limit_mode or self._pending_hide is not None:
             return
         if self.game.peek_pair() is None:
             return
@@ -648,12 +664,23 @@ class NovaDesktop(tk.Tk):
     def _toggle_daily_mode(self):
         self.daily_mode = not self.daily_mode
         if self.daily_mode:
+            self.move_limit_mode = False
+        if self.daily_mode:
             self.perfect_mode = False
         self._new_game()
 
     def _toggle_perfect_mode(self):
         self.perfect_mode = not self.perfect_mode
         if self.perfect_mode:
+            self.move_limit_mode = False
+        if self.perfect_mode:
+            self.daily_mode = False
+        self._new_game()
+
+    def _toggle_move_limit_mode(self):
+        self.move_limit_mode = not self.move_limit_mode
+        if self.move_limit_mode:
+            self.perfect_mode = False
             self.daily_mode = False
         self._new_game()
 
@@ -680,7 +707,8 @@ class NovaDesktop(tk.Tk):
             if not reuse_seed:
                 self.last_memory_seed = random.SystemRandom().randrange(1 << 63)
             self.game = MemoryGame(seed=self.last_memory_seed,
-                                   perfect_mode=self.perfect_mode, pair_count=self.pair_count)
+                                   perfect_mode=self.perfect_mode, pair_count=self.pair_count,
+                                   move_limit=self.pair_count * 2 if getattr(self, 'move_limit_mode', False) else None)
         self._show("memory")
 
     def _gallery_page(self):
