@@ -20,7 +20,7 @@ from PIL import Image, ImageOps, ImageTk
 from daily_layout import daily_positions
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
-    record_daily_challenge_win)
+    record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
 
 BACKGROUND = "#090e1c"
 PANEL = "#172443"
@@ -428,6 +428,8 @@ class NovaDesktop(tk.Tk):
         self.base_stats_path = default_stats_path()
         self.stats_path = self.base_stats_path
         self.memory_stats = load_memory_stats(self.stats_path)
+        self.score_path = self.stats_path.with_name('normal_best_score.json')
+        self.best_normal_score = load_best_score(self.score_path)
         self.perfect_path = self.stats_path.with_name("perfect_challenge.json")
         self.perfect_stats = load_memory_stats(self.perfect_path)
         self.perfect_mode = False
@@ -561,6 +563,7 @@ class NovaDesktop(tk.Tk):
         else:
             wins = self.memory_stats["wins"]
             mode = "Обычная игра"
+            record += f" • Рекорд очков: {self.best_normal_score}"
         if self.practice_replay:
             mode += " — тренировка (без рекордов)"
         hint_status = "Без подсказок" if self.perfect_mode or self.move_limit_mode or self.time_trial_mode else f"Подсказки: {2 - self.game.hints_used}/2"
@@ -594,6 +597,7 @@ class NovaDesktop(tk.Tk):
                         self.daily_stats, self.game.moves, self.daily_day, self.pair_count)
                 else:
                     self.memory_stats = record_memory_win(self.memory_stats, self.game.moves, self.pair_count)
+                    self.best_normal_score = updated_best_score(self.best_normal_score, self.game.score, True)
             try:
                 if self.practice_replay or self.move_limit_mode or self.time_trial_mode:
                     pass
@@ -603,6 +607,7 @@ class NovaDesktop(tk.Tk):
                     save_memory_stats(self.daily_path, self.daily_stats)
                 else:
                     save_memory_stats(self.stats_path, self.memory_stats)
+                    save_best_score(self.score_path, self.best_normal_score)
             except OSError:
                 # An unavailable user profile must not prevent finishing a game.
                 pass
@@ -711,6 +716,8 @@ class NovaDesktop(tk.Tk):
         suffix = "" if self.pair_count == 8 else f"_{self.pair_count}_pairs"
         self.stats_path = self.base_stats_path.with_name(f"memory_stats{suffix}.json")
         self.memory_stats = load_memory_stats(self.stats_path, self.pair_count)
+        self.score_path = self.stats_path.with_name(f'normal_best_score{suffix}.json')
+        self.best_normal_score = load_best_score(self.score_path)
         self.perfect_path = self.stats_path.with_name(f"perfect_challenge{suffix}.json")
         self.perfect_stats = load_memory_stats(self.perfect_path, self.pair_count)
         self.daily_path = self.stats_path.with_name(f"daily_challenge{suffix}.json")
