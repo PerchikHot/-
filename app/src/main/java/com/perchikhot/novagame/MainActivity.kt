@@ -249,6 +249,8 @@ class MainActivity : Activity() {
         var first=-1
         var locked=false
         var mistakes=0
+        var streak=0
+        var bestStreak=0
         var completed=false
         var hintsUsed=0
         val progress=TextView(this).apply {
@@ -276,7 +278,9 @@ class MainActivity : Activity() {
                     first=-1
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
-                        progress.text="Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
+                        streak++
+                        bestStreak=maxOf(bestStreak,streak)
+                        progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak (макс. $bestStreak)"
                         if(!completed && opened.size==values.size) {
                             completed=true
                             val wins=records.getInt(winsKey,0).coerceAtLeast(0)
@@ -317,8 +321,9 @@ class MainActivity : Activity() {
                         }
                     } else {
                         mistakes++
+                        streak=0
                         progress.text=if(perfection) "Ошибка! Раунд завершён • ${opened.size/2}/${chosen.size} пар"
-                            else "Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
+                            else "Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak (макс. $bestStreak)"
                         if(perfection) {
                             completed=true
                             label("Испытание провалено. Начни новый раунд без ошибок.")
