@@ -766,7 +766,7 @@ class NovaDesktop(tk.Tk):
             self.game = MemoryGame(seed=self.last_memory_seed,
                                    perfect_mode=self.perfect_mode, pair_count=self.pair_count,
                                    move_limit=self.pair_count * 2 if getattr(self, 'move_limit_mode', False) else None,
-                                    time_limit_seconds=90 if self.time_trial_mode else None)
+                                    time_limit_seconds=90 if getattr(self, 'time_trial_mode', False) else None)
         self._show("memory")
 
     def _gallery_page(self):
