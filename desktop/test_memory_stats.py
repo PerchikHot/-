@@ -8,6 +8,18 @@ from memory_stats import load_memory_stats, record_memory_win, save_memory_stats
 
 
 class MemoryRecordTests(unittest.TestCase):
+    def test_difficulty_records_are_independent_and_validate_completed_boards(self):
+        with tempfile.TemporaryDirectory() as folder:
+            small = Path(folder) / "memory_stats_2_pairs.json"
+            large = Path(folder) / "memory_stats.json"
+            stats = record_memory_win(load_memory_stats(small, 2), 2, 2)
+            save_memory_stats(small, stats)
+            self.assertEqual(load_memory_stats(small, 2), {"wins": 1, "best_moves": 2})
+            self.assertEqual(load_memory_stats(large), {"wins": 0, "best_moves": None})
+            with self.assertRaises(ValueError):
+                record_memory_win(stats, 1, 2)
+
+
     def test_best_moves_and_wins_survive_restart(self):
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / "Veyrion" / "memory_stats.json"
