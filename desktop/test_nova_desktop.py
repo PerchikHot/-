@@ -9,6 +9,37 @@ from nova_desktop import SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_ca
 
 
 
+
+class MemoryReplayTests(unittest.TestCase):
+    def test_replay_preserves_board_but_marks_practice_unranked(self):
+        from nova_desktop import NovaDesktop
+
+        class FakeWindow:
+            _pending_hide = None
+            _pending_hint = None
+            daily_mode = False
+            perfect_mode = False
+            pair_count = 4
+            last_memory_seed = 314159
+            practice_replay = False
+
+            def _show(self, page):
+                self.page = page
+
+        window = FakeWindow()
+        NovaDesktop._new_game(window, reuse_seed=True)
+        original = window.game.cards.copy()
+        self.assertTrue(window.practice_replay)
+        self.assertEqual(window.page, "memory")
+        window.game.choose(0)
+        NovaDesktop._new_game(window, reuse_seed=True)
+        self.assertEqual(window.game.cards, original)
+        self.assertEqual(window.game.moves, 0)
+        self.assertTrue(window.practice_replay)
+        NovaDesktop._new_game(window)
+        self.assertFalse(window.practice_replay)
+
+
 class MemoryDifficultyTests(unittest.TestCase):
     def test_every_difficulty_can_be_completed_and_invalid_sizes_are_rejected(self):
         for pairs in (2, 4, 6, 8):
