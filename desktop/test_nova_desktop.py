@@ -57,6 +57,38 @@ class MemoryDifficultyTests(unittest.TestCase):
                 MemoryGame(pair_count=pairs)
 
 
+class MemoryMoveLimitTests(unittest.TestCase):
+    def test_move_limit_loses_after_last_allowed_mismatch(self):
+        game = MemoryGame(seed=12, pair_count=2, move_limit=2)
+        a = 0
+        b = next(i for i in range(1, 4) if game.cards[i] != game.cards[a])
+        self.assertEqual(game.choose(a), "first")
+        self.assertEqual(game.choose(b), "miss")
+        game.hide_mismatch()
+        self.assertEqual(game.choose(a), "first")
+        self.assertEqual(game.choose(b), "lost")
+        self.assertTrue(game.failed)
+        self.assertEqual(game.moves, 2)
+        self.assertEqual(game.choose(a), "ignored")
+        self.assertIsNone(game.peek_pair())
+
+    def test_perfect_solution_wins_and_move_limit_disallows_hints(self):
+        game = MemoryGame(seed=8, pair_count=4, move_limit=4)
+        self.assertIsNone(game.peek_pair())
+        for symbol in SYMBOLS[:4]:
+            a, b = [i for i, card in enumerate(game.cards) if card == symbol]
+            game.choose(a)
+            result = game.choose(b)
+        self.assertEqual(result, "win")
+        self.assertFalse(game.failed)
+        self.assertEqual(game.moves, 4)
+
+    def test_invalid_limits_are_rejected(self):
+        for limit in (0, 1, 2, True, 3.5):
+            with self.assertRaises(ValueError):
+                MemoryGame(pair_count=4, move_limit=limit)
+
+
 class MemoryHintTests(unittest.TestCase):
     def test_hints_reveal_a_real_pair_without_marking_it_matched(self):
         game = MemoryGame(seed=12)
