@@ -300,6 +300,15 @@ class MemoryGame:
             return 2
         return 1
 
+    def completion_accuracy(self) -> int:
+        """Successful pair attempts / all pair attempts, completed boards only."""
+        if self.failed or len(self.matched) != len(self.cards):
+            return 0
+        pairs = len(self.cards) // 2
+        if self.moves < pairs:
+            return 0
+        return min(100, (pairs * 100 + self.moves // 2) // self.moves)
+
     def remaining_seconds(self) -> int | None:
         if self.deadline is None:
             return None
@@ -620,7 +629,7 @@ class NovaDesktop(tk.Tk):
                       "С подсказками — рекорд не изменён." if self.game.hints_used else
                       f"Рекорд: {best} ходов.")
             stars = "★" * self.game.completion_stars()
-            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОценка: {stars}\nОчки: {self.game.score}\n{suffix}")
+            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОценка: {stars}\nТочность: {self.game.completion_accuracy()}%\nОчки: {self.game.score}\n{suffix}")
 
     def _memory_hint(self):
         if self.current_page != "memory" or self.perfect_mode or self.move_limit_mode or self.time_trial_mode or self._pending_hide is not None:

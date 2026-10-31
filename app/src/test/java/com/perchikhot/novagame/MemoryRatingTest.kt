@@ -16,4 +16,11 @@ class MemoryRatingTest {
         assertEquals(0, MemoryRating.stars(6, 5, true))
         assertEquals(0, MemoryRating.stars(0, 0, true))
     }
+    @Test fun accuracyCountsOnlyCompletedPairs() {
+        assertEquals(0, MemoryRating.accuracy(8, 12, false))
+        assertEquals(0, MemoryRating.accuracy(8, 7, true))
+        assertEquals(100, MemoryRating.accuracy(8, 8, true))
+        assertEquals(67, MemoryRating.accuracy(8, 12, true))
+        assertEquals(50, MemoryRating.accuracy(8, 16, true))
+    }
 }
