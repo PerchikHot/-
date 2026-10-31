@@ -57,6 +57,17 @@ class MemoryDifficultyTests(unittest.TestCase):
                 MemoryGame(pair_count=pairs)
 
 
+class MemoryStarRatingTests(unittest.TestCase):
+    def test_stars_require_completion_and_reward_efficient_solving(self):
+        game = MemoryGame(seed=42, pair_count=4)
+        self.assertEqual(game.completion_stars(), 0)
+        game.matched.update(range(len(game.cards)))
+        for moves, expected in ((4, 3), (5, 2), (8, 2), (9, 1)):
+            game.moves = moves
+            self.assertEqual(game.completion_stars(), expected)
+        game.failed = True
+        self.assertEqual(game.completion_stars(), 0)
+
 class MemoryTimeTrialTests(unittest.TestCase):
     def test_countdown_expires_without_awarding_a_win(self):
         now = [100.0]
