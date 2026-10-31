@@ -17,7 +17,7 @@ def default_stats_path() -> Path:
     return root / "Veyrion" / "NovaGame" / "memory_stats.json"
 
 
-def load_memory_stats(path: Path) -> dict:
+def load_memory_stats(path: Path, pairs: int = 8) -> dict:
     fallback = {"wins": 0, "best_moves": None}
     try:
         if path.stat().st_size > 4096:
@@ -29,7 +29,7 @@ def load_memory_stats(path: Path) -> dict:
         best = data.get("best_moves")
         if type(wins) is not int or not 0 <= wins <= 1_000_000:
             return fallback
-        if best is not None and (type(best) is not int or not 8 <= best <= 100_000):
+        if best is not None and (type(best) is not int or not pairs <= best <= 100_000):
             return fallback
         if wins == 0 and best is not None:
             return fallback
@@ -38,9 +38,9 @@ def load_memory_stats(path: Path) -> dict:
         return fallback
 
 
-def record_memory_win(stats: dict, moves: int) -> dict:
-    """Return updated stats; only a completed 8-pair game is recorded."""
-    if type(moves) is not int or not 8 <= moves <= 100_000:
+def record_memory_win(stats: dict, moves: int, pairs: int = 8) -> dict:
+    """Return updated stats for the selected completed board size."""
+    if type(moves) is not int or not pairs <= moves <= 100_000:
         raise ValueError("Invalid completed-game move count")
     wins = stats["wins"]
     best = stats["best_moves"]
@@ -69,16 +69,17 @@ def save_memory_stats(path: Path, stats: dict) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def daily_challenge_seed(day: str) -> int:
+def daily_challenge_seed(day: str, pairs: int = 8) -> int:
     """One deterministic 4x4 board per local calendar day."""
     from datetime import date
     parsed = date.fromisoformat(day)
-    return parsed.year * 10000 + parsed.month * 100 + parsed.day
+    base = parsed.year * 10000 + parsed.month * 100 + parsed.day
+    return base if pairs == 8 else base * 31 + pairs
 
 
-def load_daily_challenge(path: Path, day: str) -> dict:
+def load_daily_challenge(path: Path, day: str, pairs: int = 8) -> dict:
     """Daily results never overwrite ordinary memory-game records."""
-    daily_challenge_seed(day)
+    daily_challenge_seed(day, pairs)
     fallback = {"date": day, "wins": 0, "best_moves": None}
     try:
         if path.stat().st_size > 4096:
@@ -89,7 +90,7 @@ def load_daily_challenge(path: Path, day: str) -> dict:
         wins, best = data.get("wins"), data.get("best_moves")
         if type(wins) is not int or not 0 <= wins <= 100000:
             return fallback
-        if best is not None and (type(best) is not int or not 8 <= best <= 100000):
+        if best is not None and (type(best) is not int or not pairs <= best <= 100000):
             return fallback
         if wins == 0 and best is not None:
             return fallback
@@ -98,9 +99,9 @@ def load_daily_challenge(path: Path, day: str) -> dict:
         return fallback
 
 
-def record_daily_challenge_win(stats: dict, moves: int, day: str) -> dict:
+def record_daily_challenge_win(stats: dict, moves: int, day: str, pairs: int = 8) -> dict:
     """Store the best unassisted result for the current day's fixed board."""
     if stats.get("date") != day:
         stats = {"date": day, "wins": 0, "best_moves": None}
-    result = record_memory_win(stats, moves)
+    result = record_memory_win(stats, moves, pairs)
     return {"date": day, **result}
