@@ -188,8 +188,9 @@ class MainActivity : Activity() {
     }
     private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false,
         replayFiles:List<java.io.File>?=null, replayValues:List<Int>?=null,
-        limited:Boolean=false) {
+        limited:Boolean=false, timeTrial:Boolean=false) {
         screen(when {
+            timeTrial -> "ПАМЯТЬ • НА ВРЕМЯ"
             limited -> "ПАМЯТЬ • ЛИМИТ ХОДОВ"
             daily -> "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ"
             perfection -> "ПАМЯТЬ • БЕЗ ОШИБОК"
@@ -229,7 +230,9 @@ class MainActivity : Activity() {
         val perfectWinsKey="perfect_wins_${chosen.size}"
         val perfectBonusKey="perfect_${dailyDay}_pairs_${chosen.size}"
         val previousBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
-        if(limited) {
+        if(timeTrial) {
+            label("90 секунд на все пары. Подсказки, награды и рекорды отключены.",14)
+        } else if(limited) {
             label("Лимит: ${chosen.size*2} хода на ${chosen.size} пар. Подсказки и награды отключены.",14)
         } else if(perfection) {
             label("Режим без ошибок: один промах завершает раунд. " +
@@ -251,9 +254,12 @@ class MainActivity : Activity() {
         add(if(limited) "Обычная игра" else "Лимит ходов") {
             memory(pairLimit,false,false,limited=!limited)
         }
+        add(if(timeTrial) "Обычная игра" else "На время (90 с)") {
+            memory(pairLimit,false,false,timeTrial=!timeTrial)
+        }
         val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
-            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection,limited=limited)},
+            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection,limited=limited,timeTrial=timeTrial)},
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
@@ -261,7 +267,7 @@ class MainActivity : Activity() {
             (chosen.indices.toList()+chosen.indices.toList())
                 .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
         add("Повторить раскладку (без наград)") {
-            memory(chosen.size,daily,perfection,chosen,values,limited)
+            memory(chosen.size,daily,perfection,chosen,values,limited,timeTrial)
         }
         if(practice) label("Тренировка: те же карточки и позиции. Монеты, рекорды и ежедневные награды отключены.",14)
         val thumbs=chosen.map {file ->
@@ -279,6 +285,10 @@ class MainActivity : Activity() {
         var roundPoints=0
         var completed=false
         var hintsUsed=0
+        // Monotonic clock: changing the wall clock cannot extend the round.
+        val deadline = if(timeTrial) android.os.SystemClock.elapsedRealtime()+90_000L
+            else Long.MAX_VALUE
+        val gameRoot = root
         val progress=TextView(this).apply {
             text="Найдено пар: 0/${chosen.size} • Ошибки: 0" +
                 (if(limited) " • Ходы: 0/$maxMoves" else "")
@@ -287,6 +297,35 @@ class MainActivity : Activity() {
             gravity=Gravity.CENTER
         }
         root.addView(progress)
+        val countdown=TextView(this).apply {
+            text=if(timeTrial) "Осталось: 90 с" else ""
+            textSize=16f
+            setTextColor(Color.rgb(255,205,128))
+            gravity=Gravity.CENTER
+        }
+        if(timeTrial) root.addView(countdown)
+        fun expireIfNeeded():Boolean {
+            if(!timeTrial || completed || android.os.SystemClock.elapsedRealtime()<deadline)
+                return false
+            completed=true
+            locked=true
+            progress.text="Время вышло! Найдено ${opened.size/2}/${chosen.size} пар • Очки: $roundPoints"
+            countdown.text="Осталось: 0 с"
+            return true
+        }
+        if(timeTrial) {
+            val ticker=object:Runnable {
+                override fun run() {
+                    if(root !== gameRoot || isFinishing || isDestroyed || completed) return
+                    if(!expireIfNeeded()) {
+                        val ms=(deadline-android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                        countdown.text="Осталось: ${(ms+999L)/1000L} с"
+                        countdown.postDelayed(this,200L)
+                    }
+                }
+            }
+            countdown.post(ticker)
+        }
         val tactical=intent.getStringExtra("prototype")=="tactics"
         lateinit var buttons:List<Button>
         fun show(i:Int) {
@@ -298,7 +337,8 @@ class MainActivity : Activity() {
             buttons[i].background=panel(0xD032285B.toInt(),14)
         }
         buttons=grid(3,values.size) {i,_ ->
-            if(!completed && !locked && i !in opened && i!=first) {
+            if(root === gameRoot && !expireIfNeeded() &&
+                !completed && !locked && i !in opened && i!=first) {
                 show(i)
                 if(first<0) first=i else {
                     val prev=first
@@ -328,13 +368,13 @@ class MainActivity : Activity() {
                                 if(firstPerfectWin) dailyPrefs.edit()
                                     .putBoolean(perfectBonusKey,true).apply()
                             }
-                            if(!practice && !limited && hintsUsed==0 && !daily && !perfection) records.edit()
+                            if(!practice && !limited && !timeTrial && hintsUsed==0 && !daily && !perfection) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
                             val firstDailyWin=!practice && daily && hintsUsed==0 &&
                                 !dailyPrefs.getBoolean(dailyKey,false)
                             if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
-                            val reward=if(practice || limited) 0 else if(perfection) {
+                            val reward=if(practice || limited || timeTrial) 0 else if(perfection) {
                                 if(firstPerfectWin) chosen.size*15 else 0
                             } else if(daily) {
                                 if(firstDailyWin) chosen.size*10 else 0
@@ -342,6 +382,7 @@ class MainActivity : Activity() {
                             if(reward>0) award(reward)
                             progress.text=when {
                                 practice -> "Тренировка пройдена! Очки раунда: $roundPoints • без наград"
+                                timeTrial -> "Успел за 90 секунд! Очки: $roundPoints • без наград"
                                 limited -> "Лимит пройден за $moves/$maxMoves ходов! Очки: $roundPoints • без наград"
                                 perfection && firstPerfectWin -> "Без ошибок! +$reward очков • Бонус дня"
                                 perfection -> "Без ошибок! Повторное прохождение без бонуса"
@@ -386,7 +427,7 @@ class MainActivity : Activity() {
         buttons.forEachIndexed {i,_->hide(i)}
         lateinit var hintButton:Button
         hintButton=button("Подсказка: 2 осталось") {
-            if(!perfection && !limited && !completed && !locked && first<0 && hintsUsed<2) {
+            if(!perfection && !limited && !timeTrial && !completed && !locked && first<0 && hintsUsed<2) {
                 val remaining=values.indices.filter {it !in opened}
                 var pair:Pair<Int,Int>?=null
                 for(i in remaining) {
@@ -409,7 +450,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if(perfection || limited) {
+        if(perfection || limited || timeTrial) {
             hintButton.text="Подсказки отключены в этом режиме"
             hintButton.isEnabled=false
         }
