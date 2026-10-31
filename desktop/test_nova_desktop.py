@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
+from nova_desktop import SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
 
@@ -39,6 +39,33 @@ class MemoryHintTests(unittest.TestCase):
         game.matched = set(range(16))
         self.assertIsNone(game.peek_pair())
         self.assertEqual(game.hints_used, 0)
+
+
+class PerfectChallengeTests(unittest.TestCase):
+    def test_first_mismatch_ends_game_and_blocks_future_moves(self):
+        game = MemoryGame(seed=12, perfect_mode=True)
+        right = next(i for i in range(1, 16) if game.cards[i] != game.cards[0])
+        self.assertEqual(game.choose(0), "first")
+        self.assertEqual(game.choose(right), "lost")
+        self.assertTrue(game.failed)
+        self.assertEqual(game.moves, 1)
+        self.assertEqual(game.choose(2), "ignored")
+        self.assertIsNone(game.peek_pair())
+        game.hide_mismatch()
+        self.assertEqual(game.choose(0), "ignored")
+
+    def test_perfect_win_requires_all_pairs_without_hints(self):
+        game = MemoryGame(seed=7, perfect_mode=True)
+        self.assertIsNone(game.peek_pair())
+        for symbol in SYMBOLS:
+            indices = [i for i, card in enumerate(game.cards) if card == symbol]
+            self.assertEqual(game.choose(indices[0]), "first")
+            result = game.choose(indices[1])
+        self.assertEqual(result, "win")
+        self.assertEqual(game.moves, 8)
+        self.assertFalse(game.failed)
+        self.assertEqual(game.hints_used, 0)
+        self.assertEqual(game.choose(0), "ignored")
 
 
 class GalleryOrFilterTests(unittest.TestCase):
