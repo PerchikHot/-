@@ -288,6 +288,17 @@ class MemoryGame:
         # or mixed with the existing unassisted move records.
         self.score = 0
 
+    def completion_stars(self) -> int:
+        """Rate a finished board by efficiency; never affects saved records."""
+        if self.failed or len(self.matched) != len(self.cards):
+            return 0
+        pairs = len(self.cards) // 2
+        if self.moves == pairs:
+            return 3
+        if self.moves <= pairs * 2:
+            return 2
+        return 1
+
     def remaining_seconds(self) -> int | None:
         if self.deadline is None:
             return None
@@ -602,7 +613,8 @@ class NovaDesktop(tk.Tk):
                       "Повтор раскладки — рекорды не изменяются." if self.practice_replay else
                       "С подсказками — рекорд не изменён." if self.game.hints_used else
                       f"Рекорд: {best} ходов.")
-            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОчки: {self.game.score}\n{suffix}")
+            stars = "★" * self.game.completion_stars()
+            messagebox.showinfo("Победа", f"Все пары найдены за {self.game.moves} ходов!\nОценка: {stars}\nОчки: {self.game.score}\n{suffix}")
 
     def _memory_hint(self):
         if self.current_page != "memory" or self.perfect_mode or self.move_limit_mode or self.time_trial_mode or self._pending_hide is not None:
