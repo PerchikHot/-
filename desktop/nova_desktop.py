@@ -528,7 +528,9 @@ class NovaDesktop(tk.Tk):
         if result == "miss":
             self._pending_hide = self.after(700, self._hide_mismatch)
         elif result == "lost":
-            messagebox.showinfo("Испытание завершено", "Первая ошибка завершила режим «Без ошибок». Начни новую игру.")
+            messagebox.showinfo("Испытание завершено",
+                "Лимит ходов исчерпан. Начни новую игру." if self.move_limit_mode
+                else "Первая ошибка завершила режим «Без ошибок». Начни новую игру.")
         elif result == "win":
             # Assisted wins count as completed games, but do not distort
             # the unassisted personal record.
