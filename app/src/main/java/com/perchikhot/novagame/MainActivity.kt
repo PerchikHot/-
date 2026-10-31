@@ -47,8 +47,7 @@ class MainActivity : Activity() {
         val shop=getSharedPreferences("unlock_shop",MODE_PRIVATE)
         val available=files.filterIndexed {i,_ -> i==0 || shop.getBoolean("image_$i",false)}
         if(available.isNotEmpty()) Thread {
-            val bmp=android.graphics.BitmapFactory.decodeFile(available.random().absolutePath,
-                android.graphics.BitmapFactory.Options().apply {inSampleSize=2})
+            val bmp=ImageSampling.decodePreview(available.random(), 1280)
             runOnUiThread {if(!isFinishing) photo.setImageBitmap(bmp)}
         }.start()
         label(title, 26)
@@ -270,10 +269,7 @@ class MainActivity : Activity() {
             memory(chosen.size,daily,perfection,chosen,values,limited,timeTrial)
         }
         if(practice) label("Тренировка: те же карточки и позиции. Монеты, рекорды и ежедневные награды отключены.",14)
-        val thumbs=chosen.map {file ->
-            android.graphics.BitmapFactory.decodeFile(file.absolutePath,
-                android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
-        }
+        val thumbs=chosen.map {file -> ImageSampling.decodePreview(file, 256) }
         val opened=mutableSetOf<Int>()
         var first=-1
         var locked=false
