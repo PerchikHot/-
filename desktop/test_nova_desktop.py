@@ -9,6 +9,23 @@ from nova_desktop import SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_ca
 
 
 
+class MemoryDifficultyTests(unittest.TestCase):
+    def test_every_difficulty_can_be_completed_and_invalid_sizes_are_rejected(self):
+        for pairs in (2, 4, 6, 8):
+            game = MemoryGame(seed=3, pair_count=pairs)
+            self.assertEqual(len(game.cards), pairs * 2)
+            for symbol in SYMBOLS[:pairs]:
+                a, b = [i for i, card in enumerate(game.cards) if card == symbol]
+                game.choose(a)
+                outcome = game.choose(b)
+            self.assertEqual(outcome, "win")
+            self.assertEqual(game.moves, pairs)
+            self.assertEqual(game.score, sum(100 + 25 * i for i in range(pairs)))
+        for pairs in (0, 3, 9):
+            with self.assertRaises(ValueError):
+                MemoryGame(pair_count=pairs)
+
+
 class MemoryHintTests(unittest.TestCase):
     def test_hints_reveal_a_real_pair_without_marking_it_matched(self):
         game = MemoryGame(seed=12)
