@@ -57,6 +57,42 @@ class MemoryDifficultyTests(unittest.TestCase):
                 MemoryGame(pair_count=pairs)
 
 
+class MemoryTimeTrialTests(unittest.TestCase):
+    def test_countdown_expires_without_awarding_a_win(self):
+        now = [100.0]
+        game = MemoryGame(seed=5, pair_count=2, time_limit_seconds=90,
+                          clock=lambda: now[0])
+        self.assertEqual(game.remaining_seconds(), 90)
+        self.assertIsNone(game.peek_pair())
+        self.assertEqual(game.choose(0), "first")
+        now[0] = 189.2
+        self.assertEqual(game.remaining_seconds(), 1)
+        now[0] = 190.0
+        self.assertEqual(game.choose(1), "lost")
+        self.assertTrue(game.failed)
+        self.assertEqual(game.remaining_seconds(), 0)
+        self.assertEqual(game.moves, 0)
+        self.assertEqual(game.choose(2), "ignored")
+
+    def test_completed_board_stays_won_when_clock_advances(self):
+        now = [0.0]
+        game = MemoryGame(seed=1, pair_count=2, time_limit_seconds=10,
+                          clock=lambda: now[0])
+        for symbol in SYMBOLS[:2]:
+            a, b = [i for i, card in enumerate(game.cards) if card == symbol]
+            game.choose(a)
+            result = game.choose(b)
+        self.assertEqual(result, "win")
+        now[0] = 100.0
+        self.assertFalse(game.expire_if_needed())
+        self.assertFalse(game.failed)
+
+    def test_invalid_time_limits_are_rejected(self):
+        for seconds in (0, 9, 601, True, 10.5, "90"):
+            with self.assertRaises(ValueError):
+                MemoryGame(time_limit_seconds=seconds)
+
+
 class MemoryMoveLimitTests(unittest.TestCase):
     def test_move_limit_loses_after_last_allowed_mismatch(self):
         game = MemoryGame(seed=12, pair_count=2, move_limit=2)
