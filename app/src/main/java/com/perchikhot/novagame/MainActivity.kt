@@ -186,8 +186,12 @@ class MainActivity : Activity() {
         }
         return buttons
     }
-    private fun memory(pairLimit:Int=6, daily:Boolean=false) {
-        screen(if(daily) "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ" else "ПАМЯТЬ • ФОТО-КАРТОЧКИ")
+    private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false) {
+        screen(when {
+            daily -> "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ"
+            perfection -> "ПАМЯТЬ • БЕЗ ОШИБОК"
+            else -> "ПАМЯТЬ • ФОТО-КАРТОЧКИ"
+        })
         label("Открывай по две карточки и находи одинаковые изображения.",15)
         val imported=ImageLibrary.imported(this)
         val shop=getSharedPreferences("unlock_shop",MODE_PRIVATE)
@@ -209,19 +213,29 @@ class MainActivity : Activity() {
         val records=getSharedPreferences("memory_records",MODE_PRIVATE)
         val recordKey="best_mistakes_${chosen.size}"
         val winsKey="wins_${chosen.size}"
+        val perfectWinsKey="perfect_wins_${chosen.size}"
+        val perfectBonusKey="perfect_${dailyDay}_pairs_${chosen.size}"
         val previousBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
-        if(daily) {
+        if(perfection) {
+            label("Режим без ошибок: один промах завершает раунд. " +
+                "Побед: ${records.getInt(perfectWinsKey,0)} • " +
+                (if(dailyPrefs.getBoolean(perfectBonusKey,false))
+                    "Бонус за сегодня получен" else "Первый успех сегодня: бонус"),14)
+        } else if(daily) {
             label("Испытание ${dailyDay} • ${chosen.size} пары • " +
                 (if(dailyPrefs.getBoolean(dailyKey,false)) "Награда уже получена" else "Первая победа без подсказок: двойные очки"),14)
         } else {
             label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок",14)
         }
         add(if(daily) "Обычная игра" else "Испытание дня") {
-            memory(pairLimit,!daily)
+            memory(pairLimit,!daily,false)
+        }
+        add(if(perfection) "Обычная игра" else "Без ошибок") {
+            memory(pairLimit,false,!perfection)
         }
         val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
-            difficulties.addView(button("$pairs пары") {memory(pairs,daily)},
+            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection)},
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
@@ -269,17 +283,30 @@ class MainActivity : Activity() {
                             val oldBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
                             // Assisted completions still award points, but never alter
                             // the unassisted win count or personal best.
-                            if(hintsUsed==0 && !daily) records.edit()
+                            val firstPerfectWin=perfection &&
+                                !dailyPrefs.getBoolean(perfectBonusKey,false)
+                            if(perfection) {
+                                records.edit().putInt(perfectWinsKey,
+                                    (records.getInt(perfectWinsKey,0).coerceAtLeast(0)+1)
+                                        .coerceAtMost(1000000)).apply()
+                                if(firstPerfectWin) dailyPrefs.edit()
+                                    .putBoolean(perfectBonusKey,true).apply()
+                            }
+                            if(hintsUsed==0 && !daily && !perfection) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
                             val firstDailyWin=daily && hintsUsed==0 &&
                                 !dailyPrefs.getBoolean(dailyKey,false)
                             if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
-                            val reward=if(daily) {
+                            val reward=if(perfection) {
+                                if(firstPerfectWin) chosen.size*15 else 0
+                            } else if(daily) {
                                 if(firstDailyWin) chosen.size*10 else 0
                             } else if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
                             if(reward>0) award(reward)
                             progress.text=when {
+                                perfection && firstPerfectWin -> "Без ошибок! +$reward очков • Бонус дня"
+                                perfection -> "Без ошибок! Повторное прохождение без бонуса"
                                 hintsUsed>0 -> "Победа с подсказками! Рекорды и награда дня не изменены"
                                 daily && !firstDailyWin -> "Испытание дня повторено • награда уже получена"
                                 daily -> "Испытание дня пройдено! +$reward очков"
@@ -290,7 +317,13 @@ class MainActivity : Activity() {
                         }
                     } else {
                         mistakes++
-                        progress.text="Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
+                        progress.text=if(perfection) "Ошибка! Раунд завершён • ${opened.size/2}/${chosen.size} пар"
+                            else "Найдено пар: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes"
+                        if(perfection) {
+                            completed=true
+                            label("Испытание провалено. Начни новый раунд без ошибок.")
+                            add("Повторить без ошибок") { memory(pairLimit,false,true) }
+                        }
                         if(tactical) Toast.makeText(this,"Ошибки: $mistakes • Бонус уменьшается",Toast.LENGTH_SHORT).show()
                         locked=true
                         buttons[i].postDelayed({
@@ -304,7 +337,7 @@ class MainActivity : Activity() {
         buttons.forEachIndexed {i,_->hide(i)}
         lateinit var hintButton:Button
         hintButton=button("Подсказка: 2 осталось") {
-            if(!completed && !locked && first<0 && hintsUsed<2) {
+            if(!perfection && !completed && !locked && first<0 && hintsUsed<2) {
                 val remaining=values.indices.filter {it !in opened}
                 var pair:Pair<Int,Int>?=null
                 for(i in remaining) {
@@ -326,6 +359,10 @@ class MainActivity : Activity() {
                     },1400)
                 }
             }
+        }
+        if(perfection) {
+            hintButton.text="Подсказки отключены в этом режиме"
+            hintButton.isEnabled=false
         }
         root.addView(hintButton)
         back()
