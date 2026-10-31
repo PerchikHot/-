@@ -186,7 +186,8 @@ class MainActivity : Activity() {
         }
         return buttons
     }
-    private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false) {
+    private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false,
+        replayFiles:List<java.io.File>?=null, replayValues:List<Int>?=null) {
         screen(when {
             daily -> "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ"
             perfection -> "ПАМЯТЬ • БЕЗ ОШИБОК"
@@ -205,9 +206,19 @@ class MainActivity : Activity() {
         // unlocked library, day and difficulty. No server or account needed.
         val dailyDay=java.time.LocalDate.now().toString()
         val dailySeed=dailyDay.hashCode() xor (pairLimit * 7919)
-        val chosen=(if(daily) allowed.sortedBy {it.absolutePath}
-            .shuffled(Random(dailySeed)) else allowed.shuffled())
-            .take(minOf(pairLimit,allowed.size))
+        // A replay reuses exactly the same unlocked files and positions.
+        // It is practice only: never award currency or update records.
+        val practice = replayFiles != null && replayValues != null &&
+            replayFiles.size == pairLimit && replayFiles.size in 2..6 &&
+            replayFiles.distinctBy {it.absolutePath}.size == replayFiles.size &&
+            replayFiles.all {file -> allowed.any {it.absolutePath == file.absolutePath}} &&
+            replayValues.size == pairLimit*2 &&
+            replayValues.all {it in 0 until pairLimit} &&
+            (0 until pairLimit).all {index -> replayValues.count {it==index} == 2}
+        val chosen=if(practice) replayFiles!!.toList() else
+            (if(daily) allowed.sortedBy {it.absolutePath}
+                .shuffled(Random(dailySeed)) else allowed.shuffled())
+                .take(minOf(pairLimit,allowed.size))
         val dailyPrefs=getSharedPreferences("memory_daily",MODE_PRIVATE)
         val dailyKey="day_${dailyDay}_pairs_${chosen.size}"
         val records=getSharedPreferences("memory_records",MODE_PRIVATE)
@@ -239,8 +250,13 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
-        val values=(chosen.indices.toList()+chosen.indices.toList())
-            .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
+        val values=if(practice) replayValues!!.toList() else
+            (chosen.indices.toList()+chosen.indices.toList())
+                .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
+        add("Повторить раскладку (без наград)") {
+            memory(chosen.size,daily,perfection,chosen,values)
+        }
+        if(practice) label("Тренировка: те же карточки и позиции. Монеты, рекорды и ежедневные награды отключены.",14)
         val thumbs=chosen.map {file ->
             android.graphics.BitmapFactory.decodeFile(file.absolutePath,
                 android.graphics.BitmapFactory.Options().apply {inSampleSize=8})
@@ -291,28 +307,29 @@ class MainActivity : Activity() {
                             val oldBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
                             // Assisted completions still award points, but never alter
                             // the unassisted win count or personal best.
-                            val firstPerfectWin=perfection &&
+                            val firstPerfectWin=!practice && perfection &&
                                 !dailyPrefs.getBoolean(perfectBonusKey,false)
-                            if(perfection) {
+                            if(perfection && !practice) {
                                 records.edit().putInt(perfectWinsKey,
                                     (records.getInt(perfectWinsKey,0).coerceAtLeast(0)+1)
                                         .coerceAtMost(1000000)).apply()
                                 if(firstPerfectWin) dailyPrefs.edit()
                                     .putBoolean(perfectBonusKey,true).apply()
                             }
-                            if(hintsUsed==0 && !daily && !perfection) records.edit()
+                            if(!practice && hintsUsed==0 && !daily && !perfection) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
-                            val firstDailyWin=daily && hintsUsed==0 &&
+                            val firstDailyWin=!practice && daily && hintsUsed==0 &&
                                 !dailyPrefs.getBoolean(dailyKey,false)
                             if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
-                            val reward=if(perfection) {
+                            val reward=if(practice) 0 else if(perfection) {
                                 if(firstPerfectWin) chosen.size*15 else 0
                             } else if(daily) {
                                 if(firstDailyWin) chosen.size*10 else 0
                             } else if(tactical) maxOf(10,60-mistakes*5) else chosen.size*5
                             if(reward>0) award(reward)
                             progress.text=when {
+                                practice -> "Тренировка пройдена! Очки раунда: $roundPoints • без наград"
                                 perfection && firstPerfectWin -> "Без ошибок! +$reward очков • Бонус дня"
                                 perfection -> "Без ошибок! Повторное прохождение без бонуса"
                                 hintsUsed>0 -> "Победа с подсказками! Рекорды и награда дня не изменены"
