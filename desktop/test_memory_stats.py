@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from memory_stats import load_memory_stats, record_memory_win, save_memory_stats
+from memory_stats import (load_memory_stats, record_memory_win, save_memory_stats,
+                          load_best_score, updated_best_score, save_best_score)
 
 
 class MemoryRecordTests(unittest.TestCase):
@@ -41,6 +42,28 @@ class MemoryRecordTests(unittest.TestCase):
                             ' ' * 5000):
                 target.write_text(payload, encoding="utf-8")
                 self.assertEqual(load_memory_stats(target), {"wins": 0, "best_moves": None})
+
+    def test_normal_score_is_persistent_and_challenges_do_not_modify_it(self):
+        with tempfile.TemporaryDirectory() as folder:
+            normal = Path(folder) / "normal_best_score.json"
+            score = load_best_score(normal)
+            self.assertEqual(score, 0)
+            score = updated_best_score(score, 550, eligible=True)
+            score = updated_best_score(score, 900, eligible=False)
+            score = updated_best_score(score, 450, eligible=True)
+            save_best_score(normal, score)
+            self.assertEqual(load_best_score(normal), 550)
+            self.assertEqual(set(json.loads(normal.read_text())), {"best_score"})
+
+    def test_bad_score_records_are_ignored(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "normal_best_score.json"
+            for payload in ('{', '{"best_score":true}', '{"best_score":-2}',
+                            '{"best_score":99999999}', ' ' * 500):
+                target.write_text(payload, encoding="utf-8")
+                self.assertEqual(load_best_score(target), 0)
+            with self.assertRaises(ValueError):
+                updated_best_score(0, -1, eligible=True)
 
     def test_invalid_moves_do_not_change_records(self):
         stats = {"wins": 1, "best_moves": 11}
