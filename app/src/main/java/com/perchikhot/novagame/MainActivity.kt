@@ -187,8 +187,10 @@ class MainActivity : Activity() {
         return buttons
     }
     private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false,
-        replayFiles:List<java.io.File>?=null, replayValues:List<Int>?=null) {
+        replayFiles:List<java.io.File>?=null, replayValues:List<Int>?=null,
+        limited:Boolean=false) {
         screen(when {
+            limited -> "ПАМЯТЬ • ЛИМИТ ХОДОВ"
             daily -> "ПАМЯТЬ • ИСПЫТАНИЕ ДНЯ"
             perfection -> "ПАМЯТЬ • БЕЗ ОШИБОК"
             else -> "ПАМЯТЬ • ФОТО-КАРТОЧКИ"
@@ -227,7 +229,9 @@ class MainActivity : Activity() {
         val perfectWinsKey="perfect_wins_${chosen.size}"
         val perfectBonusKey="perfect_${dailyDay}_pairs_${chosen.size}"
         val previousBest=if(records.contains(recordKey)) records.getInt(recordKey,0) else null
-        if(perfection) {
+        if(limited) {
+            label("Лимит: ${chosen.size*2} хода на ${chosen.size} пар. Подсказки и награды отключены.",14)
+        } else if(perfection) {
             label("Режим без ошибок: один промах завершает раунд. " +
                 "Побед: ${records.getInt(perfectWinsKey,0)} • " +
                 (if(dailyPrefs.getBoolean(perfectBonusKey,false))
@@ -244,9 +248,12 @@ class MainActivity : Activity() {
         add(if(perfection) "Обычная игра" else "Без ошибок") {
             memory(pairLimit,false,!perfection)
         }
+        add(if(limited) "Обычная игра" else "Лимит ходов") {
+            memory(pairLimit,false,false,limited=!limited)
+        }
         val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
-            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection)},
+            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection,limited=limited)},
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
@@ -254,7 +261,7 @@ class MainActivity : Activity() {
             (chosen.indices.toList()+chosen.indices.toList())
                 .let { if(daily) it.shuffled(Random(dailySeed xor 0x5A17)) else it.shuffled() }
         add("Повторить раскладку (без наград)") {
-            memory(chosen.size,daily,perfection,chosen,values)
+            memory(chosen.size,daily,perfection,chosen,values,limited)
         }
         if(practice) label("Тренировка: те же карточки и позиции. Монеты, рекорды и ежедневные награды отключены.",14)
         val thumbs=chosen.map {file ->
@@ -265,13 +272,16 @@ class MainActivity : Activity() {
         var first=-1
         var locked=false
         var mistakes=0
+        var moves=0
+        val maxMoves=if(limited) chosen.size*2 else Int.MAX_VALUE
         var streak=0
         var bestStreak=0
         var roundPoints=0
         var completed=false
         var hintsUsed=0
         val progress=TextView(this).apply {
-            text="Найдено пар: 0/${chosen.size} • Ошибки: 0"
+            text="Найдено пар: 0/${chosen.size} • Ошибки: 0" +
+                (if(limited) " • Ходы: 0/$maxMoves" else "")
             textSize=15f
             setTextColor(Color.rgb(177,215,255))
             gravity=Gravity.CENTER
@@ -293,6 +303,7 @@ class MainActivity : Activity() {
                 if(first<0) first=i else {
                     val prev=first
                     first=-1
+                    moves++
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
                         streak++
@@ -300,7 +311,8 @@ class MainActivity : Activity() {
                         // Same combo score as the Windows preview. It is a
                         // round-only metric, separate from the shop currency.
                         roundPoints += 100 + 25 * (streak - 1)
-                        progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints"
+                        progress.text="Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints" +
+                            (if(limited) " • Ходы: $moves/$maxMoves" else "")
                         if(!completed && opened.size==values.size) {
                             completed=true
                             val wins=records.getInt(winsKey,0).coerceAtLeast(0)
@@ -309,20 +321,20 @@ class MainActivity : Activity() {
                             // the unassisted win count or personal best.
                             val firstPerfectWin=!practice && perfection &&
                                 !dailyPrefs.getBoolean(perfectBonusKey,false)
-                            if(perfection && !practice) {
+                            if(perfection && !practice && !limited) {
                                 records.edit().putInt(perfectWinsKey,
                                     (records.getInt(perfectWinsKey,0).coerceAtLeast(0)+1)
                                         .coerceAtMost(1000000)).apply()
                                 if(firstPerfectWin) dailyPrefs.edit()
                                     .putBoolean(perfectBonusKey,true).apply()
                             }
-                            if(!practice && hintsUsed==0 && !daily && !perfection) records.edit()
+                            if(!practice && !limited && hintsUsed==0 && !daily && !perfection) records.edit()
                                 .putInt(winsKey,(wins+1).coerceAtMost(1000000))
                                 .putInt(recordKey,if(oldBest==null) mistakes else minOf(oldBest,mistakes)).apply()
                             val firstDailyWin=!practice && daily && hintsUsed==0 &&
                                 !dailyPrefs.getBoolean(dailyKey,false)
                             if(firstDailyWin) dailyPrefs.edit().putBoolean(dailyKey,true).apply()
-                            val reward=if(practice) 0 else if(perfection) {
+                            val reward=if(practice || limited) 0 else if(perfection) {
                                 if(firstPerfectWin) chosen.size*15 else 0
                             } else if(daily) {
                                 if(firstDailyWin) chosen.size*10 else 0
@@ -330,6 +342,7 @@ class MainActivity : Activity() {
                             if(reward>0) award(reward)
                             progress.text=when {
                                 practice -> "Тренировка пройдена! Очки раунда: $roundPoints • без наград"
+                                limited -> "Лимит пройден за $moves/$maxMoves ходов! Очки: $roundPoints • без наград"
                                 perfection && firstPerfectWin -> "Без ошибок! +$reward очков • Бонус дня"
                                 perfection -> "Без ошибок! Повторное прохождение без бонуса"
                                 hintsUsed>0 -> "Победа с подсказками! Рекорды и награда дня не изменены"
@@ -340,15 +353,25 @@ class MainActivity : Activity() {
                             label(if(reward>0) "Все пары найдены! Счёт раунда: $roundPoints • +$reward монет"
                                 else "Все пары найдены! Счёт раунда: $roundPoints • Без повторной награды")
                         }
+                        if(!completed && limited && moves>=maxMoves) {
+                            completed=true
+                            progress.text="Лимит ходов исчерпан: $moves/$maxMoves. Попробуй снова."
+                            add("Повторить лимит") { memory(pairLimit,limited=true) }
+                        }
                     } else {
                         mistakes++
                         streak=0
-                        progress.text=if(perfection) "Ошибка! Раунд завершён • ${opened.size/2}/${chosen.size} пар"
-                            else "Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints"
-                        if(perfection) {
+                        val lost=perfection || (limited && moves>=maxMoves)
+                        progress.text=if(lost) "Раунд завершён • ${opened.size/2}/${chosen.size} пар • $moves/$maxMoves ходов"
+                            else "Пары: ${opened.size/2}/${chosen.size} • Ошибки: $mistakes • Серия: $streak • Очки: $roundPoints" +
+                                (if(limited) " • Ходы: $moves/$maxMoves" else "")
+                        if(lost) {
                             completed=true
-                            label("Испытание провалено. Начни новый раунд без ошибок.")
-                            add("Повторить без ошибок") { memory(pairLimit,false,true) }
+                            label(if(limited) "Ходы закончились. Начни новое испытание."
+                                else "Испытание провалено. Начни новый раунд без ошибок.")
+                            add(if(limited) "Повторить лимит" else "Повторить без ошибок") {
+                                memory(pairLimit,false,!limited,limited=limited)
+                            }
                         }
                         if(tactical) Toast.makeText(this,"Ошибки: $mistakes • Бонус уменьшается",Toast.LENGTH_SHORT).show()
                         locked=true
@@ -363,7 +386,7 @@ class MainActivity : Activity() {
         buttons.forEachIndexed {i,_->hide(i)}
         lateinit var hintButton:Button
         hintButton=button("Подсказка: 2 осталось") {
-            if(!perfection && !completed && !locked && first<0 && hintsUsed<2) {
+            if(!perfection && !limited && !completed && !locked && first<0 && hintsUsed<2) {
                 val remaining=values.indices.filter {it !in opened}
                 var pair:Pair<Int,Int>?=null
                 for(i in remaining) {
@@ -386,7 +409,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if(perfection) {
+        if(perfection || limited) {
             hintButton.text="Подсказки отключены в этом режиме"
             hintButton.isEnabled=false
         }
