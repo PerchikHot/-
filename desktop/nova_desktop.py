@@ -257,10 +257,13 @@ def is_new_game_key(key: str) -> bool:
 class MemoryGame:
     """State machine kept independent of tkinter for deterministic tests."""
 
-    def __init__(self, seed: int | None = None, perfect_mode: bool = False):
+    def __init__(self, seed: int | None = None, perfect_mode: bool = False,
+                 pair_count: int = 8):
         self.perfect_mode = perfect_mode
         self.failed = False
-        self.cards = list(SYMBOLS) * 2
+        if pair_count not in (2, 4, 6, 8):
+            raise ValueError("Unsupported memory difficulty")
+        self.cards = list(SYMBOLS[:pair_count]) * 2
         random.Random(seed).shuffle(self.cards)
         self.matched: set[int] = set()
         self.flipped: list[int] = []
@@ -371,8 +374,10 @@ class NovaDesktop(tk.Tk):
         self.geometry("1080x720")
         self.minsize(800, 560)
         self.configure(bg=BACKGROUND)
-        self.game = MemoryGame()
-        self.stats_path = default_stats_path()
+        self.pair_count = 8
+        self.game = MemoryGame(pair_count=self.pair_count)
+        self.base_stats_path = default_stats_path()
+        self.stats_path = self.base_stats_path
         self.memory_stats = load_memory_stats(self.stats_path)
         self.perfect_path = self.stats_path.with_name("perfect_challenge.json")
         self.perfect_stats = load_memory_stats(self.perfect_path)
@@ -380,7 +385,7 @@ class NovaDesktop(tk.Tk):
         self.daily_mode = False
         self.daily_day = date.today().isoformat()
         self.daily_path = self.stats_path.with_name("daily_challenge.json")
-        self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day)
+        self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
         self.buttons: list[tk.Button] = []
         self.gallery_files: list[Path] = []
         self.gallery_root: Path | None = None
@@ -446,6 +451,7 @@ class NovaDesktop(tk.Tk):
         self.status = self._label(top, "", 15)
         self.status.pack(side="left")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
+        self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
                      self._toggle_daily_mode).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.perfect_mode else "Без ошибок",
@@ -456,14 +462,15 @@ class NovaDesktop(tk.Tk):
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
         self.buttons = []
-        for i in range(16):
+        for i in range(len(self.game.cards)):
             button = tk.Button(
                 grid, command=lambda index=i: self._flip(index),
                 width=7, height=3, font=("Segoe UI Symbol", 24),
                 bg=PANEL, fg=ACCENT, relief="flat",
                 activebackground="#2857a0", activeforeground=TEXT,
             )
-            button.grid(row=i // 4, column=i % 4, padx=6, pady=6)
+            columns = 2 if self.pair_count == 2 else 4
+            button.grid(row=i // columns, column=i % columns, padx=6, pady=6)
             self.buttons.append(button)
         self._render_memory()
 
@@ -486,7 +493,7 @@ class NovaDesktop(tk.Tk):
             wins = self.memory_stats["wins"]
             mode = "Обычная игра"
         hint_status = "Без подсказок" if self.perfect_mode else f"Подсказки: {2 - self.game.hints_used}/2"
-        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/8  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
+        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
             button.config(
@@ -507,12 +514,12 @@ class NovaDesktop(tk.Tk):
             # the unassisted personal record.
             if self.game.hints_used == 0:
                 if self.perfect_mode:
-                    self.perfect_stats = record_memory_win(self.perfect_stats, self.game.moves)
+                    self.perfect_stats = record_memory_win(self.perfect_stats, self.game.moves, self.pair_count)
                 elif self.daily_mode:
                     self.daily_stats = record_daily_challenge_win(
-                        self.daily_stats, self.game.moves, self.daily_day)
+                        self.daily_stats, self.game.moves, self.daily_day, self.pair_count)
                 else:
-                    self.memory_stats = record_memory_win(self.memory_stats, self.game.moves)
+                    self.memory_stats = record_memory_win(self.memory_stats, self.game.moves, self.pair_count)
             try:
                 if self.perfect_mode:
                     save_memory_stats(self.perfect_path, self.perfect_stats)
@@ -616,6 +623,19 @@ class NovaDesktop(tk.Tk):
         if index is not None:
             self._flip(index)
 
+    def _cycle_pairs(self):
+        # Keep records for each difficulty separate, including daily rewards.
+        sizes = (2, 4, 6, 8)
+        self.pair_count = sizes[(sizes.index(self.pair_count) + 1) % len(sizes)]
+        suffix = "" if self.pair_count == 8 else f"_{self.pair_count}_pairs"
+        self.stats_path = self.base_stats_path.with_name(f"memory_stats{suffix}.json")
+        self.memory_stats = load_memory_stats(self.stats_path, self.pair_count)
+        self.perfect_path = self.stats_path.with_name(f"perfect_challenge{suffix}.json")
+        self.perfect_stats = load_memory_stats(self.perfect_path, self.pair_count)
+        self.daily_path = self.stats_path.with_name(f"daily_challenge{suffix}.json")
+        self.daily_stats = load_daily_challenge(self.daily_path, date.today().isoformat(), self.pair_count)
+        self._new_game()
+
     def _toggle_daily_mode(self):
         self.daily_mode = not self.daily_mode
         if self.daily_mode:
@@ -638,10 +658,12 @@ class NovaDesktop(tk.Tk):
             self._pending_hint = None
         if self.daily_mode:
             self.daily_day = date.today().isoformat()
-            self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day)
-            self.game = MemoryGame(seed=daily_challenge_seed(self.daily_day))
+            self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
+            self.game = MemoryGame(seed=daily_challenge_seed(self.daily_day, self.pair_count),
+                                   pair_count=self.pair_count)
         else:
-            self.game = MemoryGame(perfect_mode=self.perfect_mode)
+            self.game = MemoryGame(perfect_mode=self.perfect_mode,
+                                   pair_count=self.pair_count)
         self._show("memory")
 
     def _gallery_page(self):
