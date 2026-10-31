@@ -42,6 +42,30 @@ class MemoryHintTests(unittest.TestCase):
 
 
 class MemoryStreakTests(unittest.TestCase):
+    def test_combo_points_reward_consecutive_matches_and_reset_on_miss(self):
+        game = MemoryGame(seed=4)
+        for expected in (100, 225):
+            available = [i for i in range(16) if i not in game.matched]
+            a = available[0]
+            b = next(i for i in available if i != a and game.cards[i] == game.cards[a])
+            self.assertEqual(game.choose(a), "first")
+            self.assertEqual(game.choose(b), "match")
+            self.assertEqual(game.score, expected)
+        available = [i for i in range(16) if i not in game.matched]
+        a = available[0]
+        b = next(i for i in available if game.cards[i] != game.cards[a])
+        game.choose(a)
+        self.assertEqual(game.choose(b), "miss")
+        game.hide_mismatch()
+        self.assertEqual(game.score, 225)
+        available = [i for i in range(16) if i not in game.matched]
+        a = available[0]
+        b = next(i for i in available if i != a and game.cards[i] == game.cards[a])
+        game.choose(a)
+        game.choose(b)
+        self.assertEqual(game.score, 325)
+        self.assertEqual(MemoryGame(seed=4).score, 0)
+
     def test_streak_increases_on_matches_and_resets_after_mistake(self):
         game = MemoryGame(seed=12)
         first_symbol = game.cards[0]
