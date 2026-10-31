@@ -488,8 +488,11 @@ class NovaDesktop(tk.Tk):
     def _memory_page(self):
         top = tk.Frame(self.content, bg=BACKGROUND)
         top.pack(fill="x", pady=12)
-        self.status = self._label(top, "", 15)
-        self.status.pack(side="left")
+        # Keep mode buttons reachable on smaller Windows screens. The live
+        # countdown and score use a separate wrapped status row below.
+        status_row = tk.Frame(self.content, bg=BACKGROUND)
+        self.status = self._label(status_row, "", 12)
+        self.status.config(anchor="w", justify="left", wraplength=980)
         self._button(top, "Новая игра", self._new_game).pack(side="right")
         self._button(top, "Повторить раскладку", self._replay_memory_board).pack(side="right", padx=6)
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
@@ -503,7 +506,8 @@ class NovaDesktop(tk.Tk):
                      self._toggle_perfect_mode).pack(side="right", padx=6)
         if not self.perfect_mode and not self.move_limit_mode and not self.time_trial_mode:
             self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
-        self._label(top, "Карточки: 1–9, A–G • N — новая игра", 10).pack(side="right", padx=12)
+        status_row.pack(fill="x", pady=(0, 8))
+        self.status.pack(fill="x")
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
         self.buttons = []
