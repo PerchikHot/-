@@ -295,7 +295,7 @@ class MemoryGame:
 
     def expire_if_needed(self) -> bool:
         """Time trial ends without awarding records or changing saved data."""
-        if self.deadline is None or len(self.matched) == len(self.cards):
+        if self.failed or self.deadline is None or len(self.matched) == len(self.cards):
             return False
         if self._clock() >= self.deadline:
             self.failed = True
