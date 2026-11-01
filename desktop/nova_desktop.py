@@ -22,6 +22,7 @@ from daily_layout import (daily_positions, daily_challenge_code,
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
+from memory_session import load_session, save_session, clear_session
 
 BACKGROUND = "#0C0A22"
 PANEL = "#271A49"
@@ -445,6 +446,7 @@ class NovaDesktop(tk.Tk):
         self.practice_replay = False
         self.game = MemoryGame(seed=self.last_memory_seed, pair_count=self.pair_count)
         self.base_stats_path = default_stats_path()
+        self.session_path = self.base_stats_path.with_name("current_memory_session.json")
         self.stats_path = self.base_stats_path
         self.memory_stats = load_memory_stats(self.stats_path)
         self.score_path = self.stats_path.with_name('normal_best_score.json')
@@ -475,6 +477,37 @@ class NovaDesktop(tk.Tk):
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
         self.after(250, self._tick_time_trial)
+        self.after(0, self._offer_resume_session)
+
+    def _offer_resume_session(self):
+        """Offer to resume an unfinished ordinary board after a restart."""
+        game = load_session(self.session_path, MemoryGame, SYMBOLS)
+        if game is None or game.moves <= 0:
+            return
+        if not messagebox.askyesno("Продолжить Nova?",
+                f"Найдена сохранённая партия: {len(game.matched) // 2}/"
+                f"{len(game.cards) // 2} пар, {game.moves} ходов.\\n"
+                "Продолжить с того же места?", parent=self):
+            clear_session(self.session_path)
+            return
+        self._set_pair_count(len(game.cards) // 2, start_new_game=False)
+        self.game = game
+        self.practice_replay = False
+        self._show("memory")
+
+    def _persist_session(self):
+        """Save only ordinary unfinished rounds; never store private gallery."""
+        if (self.daily_mode or self.perfect_mode or self.move_limit_mode or
+                self.time_trial_mode or self.practice_replay or
+                self.game.failed or self.game.moves <= 0 or
+                len(self.game.matched) == len(self.game.cards)):
+            clear_session(self.session_path)
+            return
+        try:
+            save_session(self.session_path, self.game, SYMBOLS)
+        except (OSError, ValueError):
+            # A read-only profile must not interrupt an active round.
+            pass
 
     def _label(self, parent, title, size=13):
         return tk.Label(parent, text=title, bg=BACKGROUND, fg=TEXT,
@@ -654,6 +687,7 @@ class NovaDesktop(tk.Tk):
     def _flip(self, index: int):
         result = self.game.choose(index)
         self._render_memory()
+        self._persist_session()
         if result == "miss":
             self._pending_hide = self.after(700, self._hide_mismatch)
         elif result == "lost":
@@ -702,6 +736,7 @@ class NovaDesktop(tk.Tk):
             return
         if self.game.peek_pair() is None:
             return
+        self._persist_session()
         self._render_memory()
         self._pending_hint = self.after(1800, self._hide_hint)
 
@@ -850,10 +885,14 @@ class NovaDesktop(tk.Tk):
         self._new_game()
 
     def _replay_memory_board(self):
-        """Replay the current layout for practice, never counting records."""
+        """Replay exactly the current layout for practice, including restored boards."""
+        layout = list(self.game.cards)
         self._new_game(reuse_seed=True)
+        self.game.cards = layout
+        self._render_memory()
 
     def _new_game(self, reuse_seed: bool = False):
+        clear_session(self.session_path)
         # Cancel the old game's pending mismatch before replacing its state.
         if self._pending_hide is not None:
             self.after_cancel(self._pending_hide)
