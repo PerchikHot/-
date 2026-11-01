@@ -19,6 +19,12 @@ class ImageSamplingTest {
         assertEquals(32, ImageSampling.sampleSize(65536, 32768, ImageSampling.previewDimension(99999)))
     }
 
+    @Test fun shopAndBackgroundPreviewSizesRemainBounded() {
+        assertEquals(16, ImageSampling.sampleSize(4000, 3000, 320))
+        assertEquals(4, ImageSampling.sampleSize(4000, 3000, 1600))
+        assertEquals(2048, ImageSampling.previewDimension(10000))
+    }
+
     @Test fun malformedDimensionsDoNotLoop() {
         assertEquals(1, ImageSampling.sampleSize(0, 8000, 512))
         assertEquals(1, ImageSampling.sampleSize(8000, 8000, 0))
