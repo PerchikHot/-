@@ -31,6 +31,7 @@ class DailyLayoutTests(unittest.TestCase):
     def test_import_shared_challenge_code(self):
         self.assertEqual(parse_daily_challenge_code("NOVA-20261101-P6"), ("2026-11-01", 6))
         self.assertEqual(parse_daily_challenge_code("NOVA-20240229-P2"), ("2024-02-29", 2))
+        self.assertEqual(parse_daily_challenge_code("  NOVA-20261101-P6\\n"), ("2026-11-01", 6))
         self.assertEqual(daily_positions(*parse_daily_challenge_code("NOVA-20261101-P6")),
                          daily_positions("2026-11-01", 6))
         for invalid in ("NOVA-20260229-P6", "NOVA-20261101-P9", "NOVA-20261101-P1",
