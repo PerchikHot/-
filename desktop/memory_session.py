@@ -1,0 +1,135 @@
+"""Crash-safe, local-only Nova ordinary-memory round checkpoints.
+
+No gallery paths, photos, personal identifiers or special-mode rewards are
+stored. A restored round retains its cards, matches and score but no transient
+face-up cards. Corrupt checkpoints never change records or prevent startup.
+"""
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from collections import Counter
+from pathlib import Path
+
+MAX_BYTES = 8192
+
+
+def validate_session(data, symbols):
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError("Unsupported memory session")
+    cards = data.get("cards")
+    if not isinstance(cards, list) or len(cards) not in (4, 8, 12, 16):
+        raise ValueError("Invalid board size")
+    pairs = len(cards) // 2
+    if not all(isinstance(card, str) for card in cards):
+        raise ValueError("Invalid card")
+    if Counter(cards) != Counter(list(symbols[:pairs]) * 2):
+        raise ValueError("Board does not match selected difficulty")
+    matched = data.get("matched")
+    if (not isinstance(matched, list) or
+            any(type(index) is not int or not 0 <= index < len(cards)
+                for index in matched) or len(set(matched)) != len(matched)):
+        raise ValueError("Invalid matched indices")
+    if len(matched) % 2:
+        raise ValueError("Incomplete matched pair")
+    for symbol in set(cards):
+        indices = {index for index, value in enumerate(cards) if value == symbol}
+        if indices & set(matched) and not indices <= set(matched):
+            raise ValueError("Half of a matched pair")
+    moves = data.get("moves")
+    hints = data.get("hints_used")
+    streak = data.get("match_streak")
+    best = data.get("best_streak")
+    score = data.get("score")
+    if (type(moves) is not int or not len(matched) // 2 <= moves <= 100000 or
+            type(hints) is not int or not 0 <= hints <= 2 or
+            type(streak) is not int or not 0 <= streak <= pairs or
+            type(best) is not int or not streak <= best <= pairs or
+            type(score) is not int or not 0 <= score <= 10000000):
+        raise ValueError("Invalid round counters")
+    if len(matched) == len(cards):
+        raise ValueError("Completed rounds are not resumed")
+    return {
+        "version": 1, "cards": list(cards), "matched": sorted(matched),
+        "moves": moves, "hints_used": hints, "match_streak": streak,
+        "best_streak": best, "score": score,
+    }
+
+
+def snapshot_session(game, symbols):
+    if (game.perfect_mode or game.move_limit is not None or
+            game.deadline is not None or game.failed):
+        raise ValueError("Only unfinished ordinary rounds can be saved")
+    return validate_session({
+        "version": 1, "cards": list(game.cards),
+        "matched": sorted(game.matched), "moves": game.moves,
+        "hints_used": game.hints_used, "match_streak": game.match_streak,
+        "best_streak": game.best_streak, "score": game.score,
+    }, symbols)
+
+
+def restore_session(data, game_class, symbols):
+    clean = validate_session(data, symbols)
+    game = game_class(seed=0, pair_count=len(clean["cards"]) // 2)
+    game.cards = clean["cards"]
+    game.matched = set(clean["matched"])
+    game.moves = clean["moves"]
+    game.hints_used = clean["hints_used"]
+    game.match_streak = clean["match_streak"]
+    game.best_streak = clean["best_streak"]
+    game.score = clean["score"]
+    # Never restore a half-flipped mismatch or a stale timed hint.
+    game.flipped = []
+    game.hint_indices = set()
+    return game
+
+
+def _read(path, symbols):
+    if path.stat().st_size > MAX_BYTES:
+        raise ValueError("Checkpoint too large")
+    return validate_session(json.loads(path.read_text(encoding="utf-8")), symbols)
+
+
+def load_session(path: Path, game_class, symbols):
+    for candidate in (path, path.with_suffix(".bak")):
+        try:
+            return restore_session(_read(candidate, symbols), game_class, symbols)
+        except (OSError, ValueError, TypeError, UnicodeError):
+            continue
+    return None
+
+
+def save_session(path: Path, game, symbols):
+    raw = json.dumps(snapshot_session(game, symbols), ensure_ascii=False).encode("utf-8")
+    if len(raw) > MAX_BYTES:
+        raise ValueError("Checkpoint too large")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb", dir=path.parent,
+                                         prefix=".nova-session-", suffix=".tmp",
+                                         delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # Keep the previous valid round as a recovery copy.
+        try:
+            previous = _read(path, symbols)
+            backup = json.dumps(previous, ensure_ascii=False).encode("utf-8")
+            path.with_suffix(".bak").write_bytes(backup)
+        except (OSError, ValueError, TypeError, UnicodeError):
+            pass
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def clear_session(path: Path):
+    for candidate in (path, path.with_suffix(".bak")):
+        try:
+            candidate.unlink(missing_ok=True)
+        except OSError:
+            pass
