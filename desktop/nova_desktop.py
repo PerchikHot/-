@@ -17,7 +17,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 
 from PIL import Image, ImageOps, ImageTk
-from daily_layout import daily_positions, daily_challenge_code, parse_daily_challenge_code
+from daily_layout import (daily_positions, daily_challenge_code,
+                          parse_daily_challenge_code, shared_challenge_summary)
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
@@ -572,8 +573,12 @@ class NovaDesktop(tk.Tk):
         except ValueError:
             messagebox.showerror("Неверный код", "Проверь дату и количество пар (2–8).")
             return
+        # Do not interrupt a live game until the player confirms the preview.
+        if not messagebox.askyesno("NOVA • Подтверждение испытания",
+                                   shared_challenge_summary(day, pairs), parent=self):
+            return
         if pairs != self.pair_count:
-            self._set_pair_count(pairs)
+            self._set_pair_count(pairs, start_new_game=False)
         self.shared_challenge_day = day
         self.daily_mode = True
         self.time_trial_mode = False
@@ -758,7 +763,7 @@ class NovaDesktop(tk.Tk):
         self.shared_challenge_day = None
         self._set_pair_count(sizes[(sizes.index(self.pair_count) + 1) % len(sizes)])
 
-    def _set_pair_count(self, pairs: int):
+    def _set_pair_count(self, pairs: int, *, start_new_game: bool = True):
         # Keep records for each difficulty separate, including daily rewards.
         self.pair_count = pairs
         suffix = "" if self.pair_count == 8 else f"_{self.pair_count}_pairs"
@@ -770,7 +775,8 @@ class NovaDesktop(tk.Tk):
         self.perfect_stats = load_memory_stats(self.perfect_path, self.pair_count)
         self.daily_path = self.stats_path.with_name(f"daily_challenge{suffix}.json")
         self.daily_stats = load_daily_challenge(self.daily_path, date.today().isoformat(), self.pair_count)
-        self._new_game()
+        if start_new_game:
+            self._new_game()
 
     def _tick_time_trial(self):
         if self.time_trial_mode:
