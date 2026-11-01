@@ -17,25 +17,41 @@ def default_stats_path() -> Path:
     return root / "Veyrion" / "NovaGame" / "memory_stats.json"
 
 
+def _backup_path(path: Path) -> Path:
+    return path.with_suffix(path.suffix + ".bak")
+
+
+def _valid_record(data: object) -> bool:
+    if not isinstance(data, dict):
+        return False
+    if set(data) == {"best_score"}:
+        score = data["best_score"]
+        return type(score) is int and 0 <= score <= 10_000_000
+    if set(data) == {"wins", "best_moves"}:
+        wins, best = data["wins"], data["best_moves"]
+        return (type(wins) is int and 0 <= wins <= 1_000_000
+                and (best is None or (type(best) is int and 2 <= best <= 100_000))
+                and (wins != 0 or best is None))
+    return False
+
+
 def load_memory_stats(path: Path, pairs: int = 8) -> dict:
+    """Recover the last valid record if the primary was interrupted or damaged."""
     fallback = {"wins": 0, "best_moves": None}
-    try:
-        if path.stat().st_size > 4096:
-            return fallback
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return fallback
-        wins = data.get("wins")
-        best = data.get("best_moves")
-        if type(wins) is not int or not 0 <= wins <= 1_000_000:
-            return fallback
-        if best is not None and (type(best) is not int or not pairs <= best <= 100_000):
-            return fallback
-        if wins == 0 and best is not None:
-            return fallback
-        return {"wins": wins, "best_moves": best}
-    except (OSError, ValueError, TypeError, UnicodeError):
-        return fallback
+    for candidate in (path, _backup_path(path)):
+        try:
+            if candidate.stat().st_size > 4096:
+                continue
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            if not _valid_record(data) or "wins" not in data:
+                continue
+            best = data["best_moves"]
+            if best is not None and best < pairs:
+                continue
+            return {"wins": data["wins"], "best_moves": best}
+        except (OSError, ValueError, TypeError, UnicodeError):
+            continue
+    return fallback
 
 
 def record_memory_win(stats: dict, moves: int, pairs: int = 8) -> dict:
@@ -50,23 +66,37 @@ def record_memory_win(stats: dict, moves: int, pairs: int = 8) -> dict:
     }
 
 
-def save_memory_stats(path: Path, stats: dict) -> None:
-    """Atomic local write; never replace the record with partial JSON."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _atomic_write(path: Path, raw: bytes) -> None:
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent,
-            prefix=".memory-stats-", suffix=".tmp", delete=False
+            mode="wb", dir=path.parent, prefix=".memory-stats-",
+            suffix=".tmp", delete=False
         ) as output:
             temporary = Path(output.name)
-            json.dump(stats, output, ensure_ascii=False)
+            output.write(raw)
             output.flush()
             os.fsync(output.fileno())
         os.replace(temporary, path)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def save_memory_stats(path: Path, stats: dict) -> None:
+    """Preserve last valid JSON before an atomic replacement of the record."""
+    if not _valid_record(stats):
+        raise ValueError("Invalid memory-game record")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if path.stat().st_size <= 4096:
+            previous = path.read_bytes()
+            if _valid_record(json.loads(previous.decode("utf-8"))):
+                _atomic_write(_backup_path(path), previous)
+    except (OSError, ValueError, TypeError, UnicodeError):
+        # Never overwrite a good backup with a corrupt primary.
+        pass
+    _atomic_write(path, json.dumps(stats, ensure_ascii=False).encode("utf-8"))
 
 
 def daily_challenge_seed(day: str, pairs: int = 8) -> int:
@@ -108,15 +138,17 @@ def record_daily_challenge_win(stats: dict, moves: int, day: str, pairs: int = 8
 
 
 def load_best_score(path: Path) -> int:
-    """Normal-mode score only. Challenges and practice never write this file."""
-    try:
-        if path.stat().st_size > 256:
-            return 0
-        data = json.loads(path.read_text(encoding="utf-8"))
-        score = data.get("best_score") if isinstance(data, dict) else None
-        return score if type(score) is int and 0 <= score <= 10_000_000 else 0
-    except (OSError, ValueError, TypeError, UnicodeError):
-        return 0
+    """Normal-mode score only; recover valid backups after interrupted writes."""
+    for candidate in (path, _backup_path(path)):
+        try:
+            if candidate.stat().st_size > 256:
+                continue
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            if _valid_record(data) and "best_score" in data:
+                return data["best_score"]
+        except (OSError, ValueError, TypeError, UnicodeError):
+            continue
+    return 0
 
 
 def updated_best_score(previous: int, score: int, eligible: bool) -> int:
