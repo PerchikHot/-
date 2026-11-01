@@ -486,7 +486,7 @@ class NovaDesktop(tk.Tk):
             return
         if not messagebox.askyesno("Продолжить Nova?",
                 f"Найдена сохранённая партия: {len(game.matched) // 2}/"
-                f"{len(game.cards) // 2} пар, {game.moves} ходов.\\n"
+                f"{len(game.cards) // 2} пар, {game.moves} ходов.\n"
                 "Продолжить с того же места?", parent=self):
             clear_session(self.session_path)
             return
