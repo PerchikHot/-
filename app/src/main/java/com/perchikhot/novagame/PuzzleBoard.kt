@@ -32,27 +32,43 @@ internal object PuzzleBoard {
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
+    /** Manhattan distance from the solved board, ignoring the blank tile.
+     * Used to avoid offering trivial one-move puzzles after a long shuffle.
+     */
+    fun manhattanDistance(cells: List<Int>): Int {
+        require(cells.size == 9 && cells.sorted() == solved) { "Invalid board" }
+        return cells.indices.sumOf { index ->
+            val tile = cells[index]
+            if (tile == 8) 0 else
+                kotlin.math.abs(index / 3 - tile / 3) +
+                    kotlin.math.abs(index % 3 - tile % 3)
+        }
+    }
+
     /** Legal random walk guarantees solvability; avoid immediate undo.
      * Never offer an already solved board, even for an unlucky seed.
      */
     fun scramble(steps: Int = 90, random: Random = Random.Default): MutableList<Int> {
         require(steps in 1..10000) { "Invalid shuffle length" }
-        val cells = solved.toMutableList()
-        var previousBlank = -1
-        repeat(steps) {
-            val blank = cells.indexOf(8)
-            val choices = neighbors(blank).filter { it != previousBlank }
-            val next = (if (choices.isEmpty()) neighbors(blank) else choices).random(random)
-            cells[blank] = cells[next]
-            cells[next] = 8
-            previousBlank = blank
+        // A random walk can return near its origin; retry boundedly so a
+        // standard 90-step game is not accidentally solved in two moves.
+        repeat(if (steps >= 20) 24 else 1) {
+            val cells = solved.toMutableList()
+            var previousBlank = -1
+            repeat(steps) {
+                val blank = cells.indexOf(8)
+                val choices = neighbors(blank).filter { it != previousBlank }
+                val next = (if (choices.isEmpty()) neighbors(blank) else choices).random(random)
+                cells[blank] = cells[next]
+                cells[next] = 8
+                previousBlank = blank
+            }
+            if (cells != solved && (steps < 20 || manhattanDistance(cells) >= 8)) {
+                return cells
+            }
         }
-        if (cells == solved) {
-            val blank = cells.indexOf(8)
-            val next = neighbors(blank).first()
-            cells[blank] = cells[next]
-            cells[next] = 8
-        }
-        return cells
+        // A fixed reachable 12-move state is the deterministic fallback if
+        // an adversarial random source repeatedly produces easy boards.
+        return mutableListOf(4, 7, 1, 0, 6, 2, 8, 3, 5)
     }
 }

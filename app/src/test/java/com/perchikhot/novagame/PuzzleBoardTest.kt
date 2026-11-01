@@ -21,7 +21,19 @@ class PuzzleBoardTest {
             assertEquals("seed $seed", solved, board.sorted())
             assertNotEquals("seed $seed", solved, board)
             assertEquals(9, board.distinct().size)
+            assertTrue("seed $seed was too easy",
+                PuzzleBoard.manhattanDistance(board) >= 8)
         }
+    }
+
+    @Test fun puzzleDifficultyUsesActualTileDistances() {
+        assertEquals(0, PuzzleBoard.manhattanDistance((0..8).toList()))
+        assertEquals(12, PuzzleBoard.manhattanDistance(
+            listOf(4, 7, 1, 0, 6, 2, 8, 3, 5)))
+        try {
+            PuzzleBoard.manhattanDistance(listOf(0, 0, 1, 2, 3, 4, 5, 6, 8))
+            fail("Malformed board accepted")
+        } catch (_: IllegalArgumentException) { }
     }
 
     @Test fun invalidInputsDoNotCreateBoards() {
