@@ -26,7 +26,7 @@ internal object PuzzleSession {
     private fun valid(uri: String, cells: List<Int>, moves: Int, hints: Int): Boolean {
         if (uri.length !in 10..2048 ||
             !(uri.startsWith("content://") || uri.startsWith("file://")) ||
-            uri.any { it == '\\n' || it == '\\r' || it == '\\u0000' } ||
+            uri.any { it == '\n' || it == '\r' || it == '\u0000' } ||
             cells.size != 9 || cells.sorted() != (0..8).toList() ||
             moves !in 0..100000 || hints !in 0..10000) return false
         var inversions = 0
