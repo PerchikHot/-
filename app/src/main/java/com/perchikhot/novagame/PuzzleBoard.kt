@@ -18,6 +18,17 @@ internal object PuzzleBoard {
         }
     }
 
+    /** Fit the playable square on compact Android screens in both
+     * orientations; never allow a fixed 360dp board to overflow a phone.
+     * The view's GridLayout gets the same width and height.
+     */
+    fun boardSizeDp(widthDp: Int, heightDp: Int): Int {
+        require(widthDp > 0 && heightDp > 0)
+        val usableWidth = (widthDp - 28).coerceAtLeast(1)
+        val usableHeight = (heightDp * 0.52f).toInt().coerceAtLeast(1)
+        return minOf(usableWidth, usableHeight, 420)
+    }
+
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
