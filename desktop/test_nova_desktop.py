@@ -97,6 +97,36 @@ class MemoryTimeTrialTests(unittest.TestCase):
         self.assertEqual(game.moves, 0)
         self.assertEqual(game.choose(2), "ignored")
 
+    def test_minimize_pauses_trial_without_granting_extra_time(self):
+        now = [100.0]
+        game = MemoryGame(seed=7, pair_count=2, time_limit_seconds=30,
+                          clock=lambda: now[0])
+        now[0] = 110.0
+        game.pause_timer()
+        self.assertEqual(game.remaining_seconds(), 20)
+        now[0] = 300.0
+        self.assertEqual(game.remaining_seconds(), 20)
+        self.assertFalse(game.expire_if_needed())
+        self.assertEqual(game.choose(0), "ignored")
+        game.resume_timer()
+        game.resume_timer()  # Duplicate Windows Map event is idempotent.
+        self.assertEqual(game.remaining_seconds(), 20)
+        now[0] = 319.0
+        self.assertEqual(game.remaining_seconds(), 1)
+        now[0] = 320.0
+        self.assertTrue(game.expire_if_needed())
+        self.assertTrue(game.failed)
+
+    def test_minimize_after_deadline_cannot_rescue_failed_trial(self):
+        now = [0.0]
+        game = MemoryGame(seed=7, pair_count=2, time_limit_seconds=10,
+                          clock=lambda: now[0])
+        now[0] = 11.0
+        game.pause_timer()
+        self.assertTrue(game.failed)
+        game.resume_timer()
+        self.assertEqual(game.remaining_seconds(), 0)
+
     def test_completed_board_stays_won_when_clock_advances(self):
         now = [0.0]
         game = MemoryGame(seed=1, pair_count=2, time_limit_seconds=10,
