@@ -527,8 +527,14 @@ class MainActivity : Activity() {
                     text="Ходы: 0 • Рекорд: ${previousBest ?: "—"}"
                 }
                 root.addView(progressLabel,1)
+                val metrics = resources.displayMetrics
+                val widthDp = (metrics.widthPixels / metrics.density).toInt()
+                val heightDp = (metrics.heightPixels / metrics.density).toInt()
+                val boardDp = PuzzleBoard.boardSizeDp(widthDp, heightDp)
                 val board=android.widget.GridLayout(this).apply {columnCount=3;rowCount=3}
-                root.addView(board,1,LinearLayout.LayoutParams(-1,dp(360)))
+                root.addView(board,1,LinearLayout.LayoutParams(dp(boardDp),dp(boardDp)).apply {
+                    gravity=Gravity.CENTER_HORIZONTAL
+                })
                 val views=mutableListOf<ImageView>()
                 fun draw() {
                     views.forEachIndexed { i,view ->
