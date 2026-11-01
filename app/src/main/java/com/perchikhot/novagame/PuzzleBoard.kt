@@ -45,17 +45,66 @@ internal object PuzzleBoard {
         }
     }
 
-    /** A legal, read-only tactical suggestion for the photo puzzle.
-     * This greedy Manhattan hint is not a guaranteed shortest solution;
-     * callers must label it as advice, not as an automatic solver.
+    /** Return a legal first move on a solved path, not just the lowest
+     * Manhattan neighbor. A bounded IDA* search fixes local minima where
+     * a greedy hint repeatedly sends the player backwards. Never mutates
+     * the caller's puzzle and falls back to a legal hint under CPU pressure.
      */
     fun suggestMove(cells: List<Int>): Int? {
         require(cells.size == 9 && cells.sorted() == solved) { "Invalid board" }
         if (cells == solved) return null
-        val blank = cells.indexOf(8)
-        return neighbors(blank).minByOrNull { tile ->
+        // A 3x3 puzzle with odd inversion parity cannot be completed.
+        var inversions = 0
+        for (i in cells.indices) for (j in i + 1 until cells.size) {
+            if (cells[i] != 8 && cells[j] != 8 && cells[i] > cells[j]) inversions++
+        }
+        if (inversions % 2 != 0) return null
+
+        val board = cells.toMutableList()
+        val initialBlank = board.indexOf(8)
+        var threshold = manhattanDistance(board)
+        var visited = 0
+        var nextThreshold = Int.MAX_VALUE
+        var firstSolutionMove: Int? = null
+        fun heuristic(): Int = board.indices.sumOf { index ->
+            val tile = board[index]
+            if (tile == 8) 0 else
+                kotlin.math.abs(index / 3 - tile / 3) +
+                    kotlin.math.abs(index % 3 - tile % 3)
+        }
+        fun search(depth: Int, blank: Int, previousBlank: Int, first: Int): Boolean {
+            val h = heuristic()
+            val score = depth + h
+            if (score > threshold) {
+                nextThreshold = minOf(nextThreshold, score)
+                return false
+            }
+            if (h == 0) {
+                firstSolutionMove = first
+                return true
+            }
+            if (++visited > 12000) return false
+            for (tile in neighbors(blank)) {
+                if (tile == previousBlank) continue
+                board[blank] = board[tile]
+                board[tile] = 8
+                val initial = if (depth == 0) tile else first
+                if (search(depth + 1, tile, blank, initial)) return true
+                board[tile] = board[blank]
+                board[blank] = 8
+            }
+            return false
+        }
+        while (threshold <= 31 && visited < 12000) {
+            nextThreshold = Int.MAX_VALUE
+            if (search(0, initialBlank, -1, -1)) return firstSolutionMove
+            if (nextThreshold == Int.MAX_VALUE) break
+            threshold = nextThreshold
+        }
+        // Under a strict computation budget, preserve the previous fast hint.
+        return neighbors(initialBlank).minByOrNull { tile ->
             val candidate = cells.toMutableList()
-            candidate[blank] = candidate[tile]
+            candidate[initialBlank] = candidate[tile]
             candidate[tile] = 8
             manhattanDistance(candidate)
         }
