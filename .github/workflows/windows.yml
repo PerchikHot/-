@@ -43,7 +43,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $version = (Select-String -Path app/build.gradle.kts -Pattern 'versionName\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          if (-not $version) { throw 'Nova versionName missing' }
           gh release view nova-windows --repo $env:GITHUB_REPOSITORY
-          if ($LASTEXITCODE -ne 0) { gh release create nova-windows --repo $env:GITHUB_REPOSITORY --title 'Nova Windows' --notes 'Version: 0.10.0' --latest=false }
+          if ($LASTEXITCODE -ne 0) { gh release create nova-windows --repo $env:GITHUB_REPOSITORY --title 'Nova Windows' --notes ('Version: ' + $version) --latest=false }
           gh release upload nova-windows dist/NovaGame-Windows.exe --repo $env:GITHUB_REPOSITORY --clobber
-          gh release edit nova-windows --repo $env:GITHUB_REPOSITORY --notes 'Version: 0.10.0' --latest=false
+          gh release edit nova-windows --repo $env:GITHUB_REPOSITORY --notes ('Version: ' + $version) --latest=false
