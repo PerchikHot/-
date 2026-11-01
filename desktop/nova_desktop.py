@@ -14,7 +14,7 @@ import shlex
 from datetime import date
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from PIL import Image, ImageOps, ImageTk
 from daily_layout import (daily_positions, daily_challenge_code,
@@ -30,6 +30,15 @@ TEXT = "#F2EBFF"
 SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 SLIDESHOW_DELAYS_MS = (3000, 5000, 10000)
+
+
+def memory_completion_percent(matched_cards: int, pairs: int) -> int:
+    """Live, platform-neutral board progress; a card pair counts once."""
+    if type(pairs) is not int or pairs < 2 or pairs > 8:
+        raise ValueError("Invalid memory board size")
+    if type(matched_cards) is not int or matched_cards < 0:
+        raise ValueError("Invalid matched card count")
+    return min(100, (min(matched_cards, pairs * 2) * 100) // (pairs * 2))
 
 
 def next_slideshow_delay_ms(current: int) -> int:
@@ -519,6 +528,11 @@ class NovaDesktop(tk.Tk):
         status_row = tk.Frame(self.content, bg=BACKGROUND)
         self.status = self._label(status_row, "", 12)
         self.status.config(anchor="w", justify="left", wraplength=980)
+        # Visible progress bar, not only a long single-line score on small screens.
+        ttk.Style(self).configure("Nova.Horizontal.TProgressbar",
+            troughcolor=PANEL, background=ACCENT, thickness=12)
+        self.progress = ttk.Progressbar(status_row, maximum=100,
+            style="Nova.Horizontal.TProgressbar")
         self._button(top, "Новая игра", self._new_game).pack(side="right")
         self._button(top, "Повторить раскладку", self._replay_memory_board).pack(side="right", padx=6)
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
@@ -539,6 +553,7 @@ class NovaDesktop(tk.Tk):
             self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
         status_row.pack(fill="x", pady=(0, 8))
         self.status.pack(fill="x")
+        self.progress.pack(fill="x", pady=(4, 0))
         grid = tk.Frame(self.content, bg=BACKGROUND)
         grid.pack(expand=True)
         self.buttons = []
@@ -616,6 +631,8 @@ class NovaDesktop(tk.Tk):
         if self.practice_replay:
             mode += " — тренировка (без рекордов)"
         hint_status = "Без подсказок" if self.perfect_mode or self.move_limit_mode or self.time_trial_mode else f"Подсказки: {2 - self.game.hints_used}/2"
+        self.progress["value"] = memory_completion_percent(
+            len(self.game.matched), self.pair_count)
         self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
