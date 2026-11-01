@@ -48,3 +48,13 @@ def daily_challenge_code(day: str, pairs: int) -> str:
     if parsed.isoformat() != day:
         raise ValueError("Use ISO date for daily challenge")
     return f"NOVA-{day.replace('-', '')}-P{pairs}"
+
+
+def shared_challenge_summary(day: str, pairs: int) -> str:
+    """Human-readable confirmation; never includes local gallery or save data."""
+    code = daily_challenge_code(day, pairs)
+    return (f"Код: {code}\nДата: {day}\n"
+            f"Карточек: {pairs * 2} ({pairs} пар)\n\n"
+            "Текущая партия будет заменена.\n"
+            "Это тренировка: рекорды и награды не изменятся.\n\n"
+            "Начать испытание?")
