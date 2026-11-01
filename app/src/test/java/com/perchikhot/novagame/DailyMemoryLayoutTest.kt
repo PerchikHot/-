@@ -29,10 +29,12 @@ class DailyMemoryLayoutTest {
     @Test fun importCodeAndRejectMalformed() {
         assertEquals("2026-11-01" to 6,
             DailyMemoryLayout.parseShareCode("NOVA-20261101-P6"))
+        assertEquals("2026-11-01" to 6,
+            DailyMemoryLayout.parseShareCode("  NOVA-20261101-P6\\n"))
         assertEquals(DailyMemoryLayout.positions("2026-11-01", 6),
             DailyMemoryLayout.positions(DailyMemoryLayout.parseShareCode("NOVA-20261101-P6").first, 6))
         for (invalid in listOf("NOVA-20260229-P6", "NOVA-20261101-P9",
-                "NOVA-20261101-P06", "nova-20261101-P6", " NOVA-20261101-P6")) {
+                "NOVA-20261101-P06", "nova-20261101-P6", "NOVA-20261101-P6/../", "NOVA-20261101-P6" + " ".repeat(100))) {
             try {
                 DailyMemoryLayout.parseShareCode(invalid)
                 throw AssertionError("Accepted malformed challenge: $invalid")
