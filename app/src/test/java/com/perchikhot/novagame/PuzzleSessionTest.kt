@@ -10,6 +10,7 @@ class PuzzleSessionTest {
     @Test fun restoresUnfinishedBoardWithoutChangingScore() {
         val raw = PuzzleSession.encode(uri,board,42,3)
         assertNotNull(raw)
+        assertTrue(raw!!.startsWith("v2|"))
         val restored = PuzzleSession.decode(raw)
         assertEquals(board, restored?.cells)
         assertEquals(42, restored?.moves)
@@ -20,6 +21,13 @@ class PuzzleSessionTest {
 
     @Test fun rejectsCorruptOrImpossibleProgress() {
         val valid = PuzzleSession.encode(uri,board,42,3)!!
+        // Preserve old users' unfinished puzzles, but checksum every new save.
+        assertEquals(board, PuzzleSession.decode("v1|42|3|0,1,2,3,4,5,6,8,7|$uri")?.cells)
+        assertNull(PuzzleSession.decode(valid.replace("|42|", "|43|")))
+        assertNull(PuzzleSession.decode(valid.replace("image%3A123", "image%3A124")))
+        assertNull(PuzzleSession.decode(valid.replace("0,1,2,3,4,5,6,8,7",
+            "0,2,1,4,3,5,6,8,7")))
+
         for (raw in listOf("", "v0|42|3|0,1,2,3,4,5,6,8,7|$uri",
             valid.replace("|42|", "|-1|"),
             valid.replace("|3|", "|10001|"),
