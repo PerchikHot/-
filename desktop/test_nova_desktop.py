@@ -5,9 +5,21 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
+from nova_desktop import memory_completion_percent, SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+
+
+class MemoryProgressTests(unittest.TestCase):
+    def test_live_progress_is_bounded_for_all_difficulties(self):
+        for pairs in (2, 4, 6, 8):
+            self.assertEqual(memory_completion_percent(0, pairs), 0)
+            self.assertEqual(memory_completion_percent(2, pairs), 100 // pairs)
+            self.assertEqual(memory_completion_percent(pairs * 2, pairs), 100)
+            self.assertEqual(memory_completion_percent(999, pairs), 100)
+        for count, pairs in [(-1, 4), (1, 0), (1, True), (1.5, 4)]:
+            with self.assertRaises(ValueError):
+                memory_completion_percent(count, pairs)
 
 
 class MemoryReplayTests(unittest.TestCase):
