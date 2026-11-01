@@ -21,12 +21,14 @@ internal object DailyMemoryLayout {
 
     /** Imported codes select the same board on Android and Windows. */
     fun parseShareCode(code: String): Pair<String, Int> {
-        val match = Regex("^NOVA-(\\d{4})(\\d{2})(\\d{2})-P([2-8])$").matchEntire(code)
+        require(code.length <= 64) { "Challenge code too long" }
+        val normalized = code.trim()
+        val match = Regex("^NOVA-(\\d{4})(\\d{2})(\\d{2})-P([2-8])$").matchEntire(normalized)
             ?: throw IllegalArgumentException("Invalid challenge code")
         val day = "${match.groupValues[1]}-${match.groupValues[2]}-${match.groupValues[3]}"
         val pairs = match.groupValues[4].toInt()
         try {
-            require(shareCode(day, pairs) == code) { "Invalid challenge date" }
+            require(shareCode(day, pairs) == normalized) { "Invalid challenge date" }
         } catch (error: java.time.DateTimeException) {
             throw IllegalArgumentException("Invalid challenge date", error)
         }
