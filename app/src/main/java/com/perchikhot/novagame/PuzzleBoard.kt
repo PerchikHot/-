@@ -45,6 +45,22 @@ internal object PuzzleBoard {
         }
     }
 
+    /** A legal, read-only tactical suggestion for the photo puzzle.
+     * This greedy Manhattan hint is not a guaranteed shortest solution;
+     * callers must label it as advice, not as an automatic solver.
+     */
+    fun suggestMove(cells: List<Int>): Int? {
+        require(cells.size == 9 && cells.sorted() == solved) { "Invalid board" }
+        if (cells == solved) return null
+        val blank = cells.indexOf(8)
+        return neighbors(blank).minByOrNull { tile ->
+            val candidate = cells.toMutableList()
+            candidate[blank] = candidate[tile]
+            candidate[tile] = 8
+            manhattanDistance(candidate)
+        }
+    }
+
     /** Legal random walk guarantees solvability; avoid immediate undo.
      * Never offer an already solved board, even for an unlucky seed.
      */
