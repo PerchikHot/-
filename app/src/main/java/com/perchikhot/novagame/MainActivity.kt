@@ -521,8 +521,11 @@ class MainActivity : Activity() {
         val page=root
         label("Загружаем случайную фотографию…",16)
         back()
+        val checkpointPrefs=getSharedPreferences("puzzle_checkpoint",MODE_PRIVATE)
+        val restored=PuzzleSession.decode(checkpointPrefs.getString("round_v1",null))
         Thread {
-            val uri=ImageLibrary.randomUri(this)
+            val uri=restored?.uri?.let { android.net.Uri.parse(it) }
+                ?: ImageLibrary.randomUri(this)
             val bitmap=if(uri!=null) try {
                 val source=android.graphics.ImageDecoder.createSource(contentResolver,uri)
                 android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
@@ -545,17 +548,26 @@ class MainActivity : Activity() {
                 }
                 // A legal walk always produces a solvable board and never
                 // crashes if the blank lands in the top-left corner.
-                val cells = PuzzleBoard.scramble(90)
-                var moves=0
-                var hintsUsed=0
+                val cells = restored?.cells?.toMutableList() ?: PuzzleBoard.scramble(90)
+                var moves=restored?.moves ?: 0
+                var hintsUsed=restored?.hints ?: 0
                 var rewarded=false
+                fun checkpoint() {
+                    if(uri!=null) {
+                        val value=PuzzleSession.encode(uri.toString(),cells,moves,hintsUsed)
+                        if(value!=null && !checkpointPrefs.edit().putString("round_v1",value).commit()) {
+                            Toast.makeText(this,"Не удалось сохранить пазл",Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                if(restored==null) checkpoint()
                 val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
                 val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
                 val progressLabel=TextView(this).apply {
                     textSize=17f
                     setTextColor(Color.rgb(177,215,255))
                     gravity=Gravity.CENTER
-                    text="Ходы: 0 • Рекорд: ${previousBest ?: "—"}"
+                    text="Ходы: $moves • Рекорд: ${previousBest ?: "—"}"
                 }
                 root.addView(progressLabel,1)
                 val metrics = resources.displayMetrics
@@ -586,10 +598,12 @@ class MainActivity : Activity() {
                             if(PuzzleBoard.canMove(i, z)) {
                                 cells[z]=cells[i];cells[i]=8
                                 moves++
+                                checkpoint()
                                 draw()
                                 progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}"
                                 if(!rewarded && cells==(0..8).toList()) {
                                     rewarded=true
+                                    checkpointPrefs.edit().remove("round_v1").commit()
                                     val best=records.getInt("best_moves_3x3",0)
                                     if(hintsUsed==0 && (best<=0 || moves<best)) {
                                         records.edit().putInt("best_moves_3x3",moves).apply()
@@ -615,6 +629,7 @@ class MainActivity : Activity() {
                         val suggestion=PuzzleBoard.suggestMove(cells)
                         if(suggestion!=null) {
                             hintsUsed++
+                            checkpoint()
                             val tile=views[suggestion]
                             tile.alpha=0.5f
                             tile.postDelayed({ tile.alpha=1f },900L)
@@ -624,6 +639,11 @@ class MainActivity : Activity() {
                         }
                     }
                 }
+                add("↻ НОВЫЙ ПАЗЛ (сброс текущего)") {
+                    checkpointPrefs.edit().remove("round_v1").commit()
+                    puzzle()
+                }
+                if(restored!=null) label("Продолжена сохранённая партия • $moves ходов",14)
                 val preview=ImageView(this).apply {setImageBitmap(square);scaleType=ImageView.ScaleType.FIT_CENTER}
                 label("Образец",16)
                 root.addView(preview,LinearLayout.LayoutParams(-1,dp(150)))
