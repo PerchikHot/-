@@ -829,9 +829,9 @@ class NovaDesktop(tk.Tk):
         if self._pending_hint is not None:
             self.after_cancel(self._pending_hint)
             self._pending_hint = None
-        self.practice_replay = reuse_seed or self.shared_challenge_day is not None
+        self.practice_replay = reuse_seed or getattr(self, 'shared_challenge_day', None) is not None
         if self.daily_mode:
-            self.daily_day = self.shared_challenge_day or date.today().isoformat()
+            self.daily_day = getattr(self, 'shared_challenge_day', None) or date.today().isoformat()
             self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
             if not reuse_seed:
                 self.last_memory_seed = daily_challenge_seed(self.daily_day, self.pair_count)

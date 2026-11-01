@@ -20,7 +20,11 @@ internal object DailyMemoryLayout {
             ?: throw IllegalArgumentException("Invalid challenge code")
         val day = "${match.groupValues[1]}-${match.groupValues[2]}-${match.groupValues[3]}"
         val pairs = match.groupValues[4].toInt()
-        require(shareCode(day, pairs) == code) { "Invalid challenge date" }
+        try {
+            require(shareCode(day, pairs) == code) { "Invalid challenge date" }
+        } catch (error: java.time.DateTimeException) {
+            throw IllegalArgumentException("Invalid challenge date", error)
+        }
         return day to pairs
     }
 
