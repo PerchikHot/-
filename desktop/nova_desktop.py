@@ -522,9 +522,12 @@ class NovaDesktop(tk.Tk):
 
     def _memory_page(self):
         top = tk.Frame(self.content, bg=BACKGROUND)
-        top.pack(fill="x", pady=12)
-        # Keep mode buttons reachable on smaller Windows screens. The live
-        # countdown and score use a separate wrapped status row below.
+        top.pack(fill="x", pady=(8, 4))
+        # Multirow controls avoid clipping on 800px Windows screens.
+        mode_row = tk.Frame(self.content, bg=BACKGROUND)
+        mode_row.pack(fill="x", pady=(0, 8))
+        for column in range(3):
+            mode_row.grid_columnconfigure(column, weight=1, uniform="nova_mode")
         status_row = tk.Frame(self.content, bg=BACKGROUND)
         self.status = self._label(status_row, "", 12)
         self.status.config(anchor="w", justify="left", wraplength=980)
@@ -541,16 +544,22 @@ class NovaDesktop(tk.Tk):
         if self.daily_mode:
             self._button(status_row, "Копировать код испытания",
                          self._copy_daily_challenge_code).pack(side="right", padx=6)
-        self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
-                     self._toggle_daily_mode).pack(side="right", padx=6)
-        self._button(top, "Обычная игра" if self.time_trial_mode else "На время (90с)",
-                     self._toggle_time_trial_mode).pack(side="right", padx=6)
-        self._button(top, "Без лимита" if self.move_limit_mode else "Лимит ходов",
-                     self._toggle_move_limit_mode).pack(side="right", padx=6)
-        self._button(top, "Обычная игра" if self.perfect_mode else "Без ошибок",
-                     self._toggle_perfect_mode).pack(side="right", padx=6)
+        modes = [
+            ("Обычная игра" if self.daily_mode else "Вызов дня",
+             self._toggle_daily_mode),
+            ("Обычная игра" if self.time_trial_mode else "На время (90с)",
+             self._toggle_time_trial_mode),
+            ("Без лимита" if self.move_limit_mode else "Лимит ходов",
+             self._toggle_move_limit_mode),
+            ("Обычная игра" if self.perfect_mode else "Без ошибок",
+             self._toggle_perfect_mode),
+        ]
         if not self.perfect_mode and not self.move_limit_mode and not self.time_trial_mode:
-            self._button(top, "Подсказка (H)", self._memory_hint).pack(side="right", padx=6)
+            modes.append(("Подсказка (H)", self._memory_hint))
+        for index, (caption, action) in enumerate(modes):
+            self._button(mode_row, caption, action).grid(
+                row=index // 3, column=index % 3,
+                padx=4, pady=3, sticky="ew")
         status_row.pack(fill="x", pady=(0, 8))
         self.status.pack(fill="x")
         self.progress.pack(fill="x", pady=(4, 0))
