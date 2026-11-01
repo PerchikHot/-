@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,3 +42,13 @@ jobs:
         with:
           name: NovaGame-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Publish Android APK for All Hub
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view nova-android --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create nova-android --repo "$GITHUB_REPOSITORY" --title "Nova Android" --notes "Development APK" --latest=false
+          cp app/build/outputs/apk/debug/app-debug.apk NovaGame-Android.apk
+          gh release upload nova-android NovaGame-Android.apk --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit nova-android --repo "$GITHUB_REPOSITORY" --notes "Version: 0.10.0" --latest=false
