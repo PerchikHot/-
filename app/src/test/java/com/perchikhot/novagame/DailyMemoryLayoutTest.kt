@@ -39,6 +39,12 @@ class DailyMemoryLayoutTest {
         }
     }
 
+    @Test fun importedBoardRequiresEnoughLocalImages() {
+        assertTrue(DailyMemoryLayout.canPlaySharedChallenge(6, 6))
+        assertTrue(!DailyMemoryLayout.canPlaySharedChallenge(5, 6))
+        assertTrue(!DailyMemoryLayout.canPlaySharedChallenge(100, 9))
+    }
+
     @Test fun stableAndTwoOfEachPair() {
         val first = DailyMemoryLayout.positions("2026-11-01", 6)
         assertEquals(first, DailyMemoryLayout.positions("2026-11-01", 6))

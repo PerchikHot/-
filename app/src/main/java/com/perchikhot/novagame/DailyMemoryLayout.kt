@@ -14,6 +14,11 @@ internal object DailyMemoryLayout {
         return "NOVA-${day.replace("-", "")}-P$pairs"
     }
 
+    /** A shared code must never silently change its difficulty when fewer
+     * local photos are unlocked; a failed import leaves progress untouched. */
+    fun canPlaySharedChallenge(unlockedImages: Int, pairs: Int): Boolean =
+        pairs in 2..8 && unlockedImages >= pairs
+
     /** Imported codes select the same board on Android and Windows. */
     fun parseShareCode(code: String): Pair<String, Int> {
         val match = Regex("^NOVA-(\\d{4})(\\d{2})(\\d{2})-P([2-8])$").matchEntire(code)

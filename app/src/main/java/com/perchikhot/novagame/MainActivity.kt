@@ -212,6 +212,12 @@ class MainActivity : Activity() {
             back()
             return
         }
+        if(importedDay!=null && !DailyMemoryLayout.canPlaySharedChallenge(allowed.size,pairLimit)) {
+            label("Для кода P$pairLimit нужно открыть минимум $pairLimit изображений. " +
+                "Раскладка не будет изменена на другую сложность.",17)
+            back()
+            return
+        }
         // A daily seed gives the same cards and positions for the same
         // unlocked library, day and difficulty. No server or account needed.
         val dailyDay=importedDay ?: java.time.LocalDate.now().toString()
