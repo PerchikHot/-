@@ -516,6 +516,17 @@ class MainActivity : Activity() {
                 // A legal walk always produces a solvable board and never
                 // crashes if the blank lands in the top-left corner.
                 val cells = PuzzleBoard.scramble(90)
+                var moves=0
+                var rewarded=false
+                val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
+                val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
+                val progressLabel=TextView(this).apply {
+                    textSize=17f
+                    setTextColor(Color.rgb(177,215,255))
+                    gravity=Gravity.CENTER
+                    text="Ходы: 0 • Рекорд: ${previousBest ?: "—"}"
+                }
+                root.addView(progressLabel,1)
                 val board=android.widget.GridLayout(this).apply {columnCount=3;rowCount=3}
                 root.addView(board,1,LinearLayout.LayoutParams(-1,dp(360)))
                 val views=mutableListOf<ImageView>()
