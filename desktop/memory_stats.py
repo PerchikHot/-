@@ -27,7 +27,17 @@ def _valid_record(data: object) -> bool:
     if set(data) == {"best_score"}:
         score = data["best_score"]
         return type(score) is int and 0 <= score <= 10_000_000
-    if set(data) == {"wins", "best_moves"}:
+    if set(data) in ({"wins", "best_moves"}, {"date", "wins", "best_moves"}):
+        if "date" in data:
+            from datetime import date
+            day = data["date"]
+            if not isinstance(day, str):
+                return False
+            try:
+                if date.fromisoformat(day).isoformat() != day:
+                    return False
+            except ValueError:
+                return False
         wins, best = data["wins"], data["best_moves"]
         return (type(wins) is int and 0 <= wins <= 1_000_000
                 and (best is None or (type(best) is int and 2 <= best <= 100_000))
@@ -108,25 +118,23 @@ def daily_challenge_seed(day: str, pairs: int = 8) -> int:
 
 
 def load_daily_challenge(path: Path, day: str, pairs: int = 8) -> dict:
-    """Daily results never overwrite ordinary memory-game records."""
+    """Recover the current day's result; never restore yesterday's challenge."""
     daily_challenge_seed(day, pairs)
     fallback = {"date": day, "wins": 0, "best_moves": None}
-    try:
-        if path.stat().st_size > 4096:
-            return fallback
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict) or data.get("date") != day:
-            return fallback
-        wins, best = data.get("wins"), data.get("best_moves")
-        if type(wins) is not int or not 0 <= wins <= 100000:
-            return fallback
-        if best is not None and (type(best) is not int or not pairs <= best <= 100000):
-            return fallback
-        if wins == 0 and best is not None:
-            return fallback
-        return {"date": day, "wins": wins, "best_moves": best}
-    except (OSError, ValueError, TypeError, UnicodeError):
-        return fallback
+    for candidate in (path, _backup_path(path)):
+        try:
+            if candidate.stat().st_size > 4096:
+                continue
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            if not _valid_record(data) or data.get("date") != day:
+                continue
+            best = data["best_moves"]
+            if best is not None and best < pairs:
+                continue
+            return {"date": day, "wins": data["wins"], "best_moves": best}
+        except (OSError, ValueError, TypeError, UnicodeError):
+            continue
+    return fallback
 
 
 def record_daily_challenge_win(stats: dict, moves: int, day: str, pairs: int = 8) -> dict:
