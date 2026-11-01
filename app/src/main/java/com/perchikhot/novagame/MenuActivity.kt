@@ -38,7 +38,7 @@ class MenuActivity:Activity() {
             val density=resources.displayMetrics.density
             for ((x,y,glow) in stars) {
                 paint.color=Color.argb((35f+glow*125f).toInt(),190,165,255)
-                canvas.drawCircle(x*width,y*height,
+                canvas.drawCircle(x*width.toFloat(),y*height.toFloat(),
                     (if(glow>0.82f) 1.9f else 0.9f)*density,paint)
             }
         }
