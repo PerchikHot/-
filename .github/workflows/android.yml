@@ -43,13 +43,44 @@ jobs:
           name: NovaGame-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Publish Android APK for All Hub
-        if: github.ref == 'refs/heads/main'
+      # A fresh runner's debug key is different on every run. Publishing
+      # that APK breaks in-place upgrades and may strand local user data.
+      - name: Restore existing Nova signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NOVA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No existing Nova signing key supplied; refusing to publish an incompatible APK"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nova-release.jks"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Build signed Nova release APK
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          NOVA_KEYSTORE_PATH: ${{ runner.temp }}/nova-release.jks
+          NOVA_KEYSTORE_PASSWORD: ${{ secrets.NOVA_KEYSTORE_PASSWORD }}
+          NOVA_KEY_ALIAS: ${{ secrets.NOVA_KEY_ALIAS }}
+          NOVA_KEY_PASSWORD: ${{ secrets.NOVA_KEY_PASSWORD }}
+        run: gradle assembleRelease --no-daemon
+      - name: Verify installed Nova certificate and publish release
+        if: github.ref == 'refs/heads/main' && steps.signing.outputs.enabled == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view nova-android --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create nova-android --repo "$GITHUB_REPOSITORY" --title "Nova Android" --notes "Development APK" --latest=false
-          cp app/build/outputs/apk/debug/app-debug.apk NovaGame-Android.apk
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/nova-signature.txt
+          grep -qi '0c9e5d8a2e5f8195a458edae8b817d8643f2c49aeedff43c94a6afa452c104a6a' /tmp/nova-signature.txt || {
+            echo "::error::Nova signing certificate differs from installed 0.9.0 APK. Refusing incompatible update."
+            exit 1
+          }
+          gh release view nova-android --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create nova-android --repo "$GITHUB_REPOSITORY" --title "Nova Android" --notes "Signed APK" --latest=false
+          cp "$APK" NovaGame-Android.apk
           gh release upload nova-android NovaGame-Android.apk --repo "$GITHUB_REPOSITORY" --clobber
           VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)
           test -n "$VERSION"
