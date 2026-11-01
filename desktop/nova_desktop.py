@@ -892,7 +892,10 @@ class NovaDesktop(tk.Tk):
         self._render_memory()
 
     def _new_game(self, reuse_seed: bool = False):
-        clear_session(self.session_path)
+        # Pure game-controller tests use a minimal window without storage.
+        # Only the actual desktop application owns a checkpoint path.
+        if getattr(self, "session_path", None) is not None:
+            clear_session(self.session_path)
         # Cancel the old game's pending mismatch before replacing its state.
         if self._pending_hide is not None:
             self.after_cancel(self._pending_hide)
