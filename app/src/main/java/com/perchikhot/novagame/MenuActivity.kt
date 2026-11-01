@@ -70,6 +70,9 @@ class MenuActivity:Activity() {
     }
     override fun onPause() {
         handler.removeCallbacks(cycle)
+        // Invalidate pending background decodes when leaving the game.
+        imageRequest++
+        background.animate().cancel()
         super.onPause()
     }
     private fun unlocked():List<File> {
@@ -86,17 +89,26 @@ class MenuActivity:Activity() {
         pictureIndex=(pictureIndex+1)%files.size
         val target=files[pictureIndex]
         val request=++imageRequest
-        Thread {
+        val targetView=background
+        // Use the same bounded worker pool as the shop thumbnails instead of
+        // spawning an unbounded thread on every background rotation.
+        previewExecutor.execute {
             val bitmap=ImageSampling.decodePreview(target,1600)
             runOnUiThread {
-                if(!isFinishing && request==imageRequest && ::background.isInitialized && bitmap!=null) {
-                    background.animate().alpha(0.25f).setDuration(280).withEndAction {
-                        background.setImageBitmap(bitmap)
-                        background.animate().alpha(1f).setDuration(700).start()
+                if(!isFinishing && !isDestroyed && request==imageRequest &&
+                    targetView===background && bitmap!=null) {
+                    targetView.animate().cancel()
+                    targetView.animate().alpha(0.25f).setDuration(280).withEndAction {
+                        // The user may have switched screens during the fade.
+                        if(!isFinishing && !isDestroyed && request==imageRequest &&
+                            targetView===background) {
+                            targetView.setImageBitmap(bitmap)
+                            targetView.animate().alpha(1f).setDuration(700).start()
+                        }
                     }.start()
                 }
             }
-        }.start()
+        }
     }
     private fun setup(name:String) {
         screenName=name
