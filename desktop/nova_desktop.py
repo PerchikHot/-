@@ -285,6 +285,7 @@ class MemoryGame:
                 type(time_limit_seconds) is not int or not 10 <= time_limit_seconds <= 600):
             raise ValueError("Time trial must last between 10 and 600 seconds")
         self._clock = clock or time.monotonic
+        self._paused_at: float | None = None
         self.deadline = (self._clock() + time_limit_seconds
                          if time_limit_seconds is not None else None)
         self.cards = list(SYMBOLS[:pair_count]) * 2
@@ -320,14 +321,33 @@ class MemoryGame:
             return 0
         return min(100, (pairs * 100 + self.moves // 2) // self.moves)
 
+    def pause_timer(self) -> None:
+        """Suspend a time trial while the Windows window is minimized."""
+        if (self.deadline is None or self._paused_at is not None or
+                self.failed or len(self.matched) == len(self.cards)):
+            return
+        if self.expire_if_needed():
+            return
+        self._paused_at = self._clock()
+
+    def resume_timer(self) -> None:
+        """Shift the deadline once; repeated Map events never add free time."""
+        if self._paused_at is None:
+            return
+        if self.deadline is not None:
+            self.deadline += max(0.0, self._clock() - self._paused_at)
+        self._paused_at = None
+
     def remaining_seconds(self) -> int | None:
         if self.deadline is None:
             return None
-        return max(0, math.ceil(self.deadline - self._clock()))
+        current = self._paused_at if self._paused_at is not None else self._clock()
+        return max(0, math.ceil(self.deadline - current))
 
     def expire_if_needed(self) -> bool:
         """Time trial ends without awarding records or changing saved data."""
-        if self.failed or self.deadline is None or len(self.matched) == len(self.cards):
+        if (self.failed or self.deadline is None or self._paused_at is not None
+                or len(self.matched) == len(self.cards)):
             return False
         if self._clock() >= self.deadline:
             self.failed = True
@@ -361,7 +381,7 @@ class MemoryGame:
     def choose(self, index: int) -> str:
         if self.expire_if_needed():
             return 'lost'
-        if self.failed or self.hint_indices or index not in range(len(self.cards)) or index in self.matched:
+        if self.failed or self._paused_at is not None or self.hint_indices or index not in range(len(self.cards)) or index in self.matched:
             return "ignored"
         if index in self.flipped or len(self.flipped) >= 2:
             return "ignored"
@@ -476,6 +496,10 @@ class NovaDesktop(tk.Tk):
         self.slideshow_delay_ms = 5000
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
+        # Minimized Windows windows must not silently consume a timed round.
+        # The clock resumes from the same remaining time when restored.
+        self.bind("<Unmap>", lambda _event: self.game.pause_timer())
+        self.bind("<Map>", lambda _event: self.game.resume_timer())
         self.after(250, self._tick_time_trial)
         self.after(0, self._offer_resume_session)
 
