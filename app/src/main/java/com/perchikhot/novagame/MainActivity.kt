@@ -513,31 +513,9 @@ class MainActivity : Activity() {
                 val parts=(0..8).map { i ->
                     android.graphics.Bitmap.createBitmap(square,(i%3)*tileSize,(i/3)*tileSize,tileSize,tileSize)
                 }
-                val cells=(0..8).toMutableList()
-                var moves=0
-                var rewarded=false
-                val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
-                val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
-                val progressLabel=TextView(this).apply {
-                    textSize=17f
-                    setTextColor(Color.rgb(177,215,255))
-                    gravity=Gravity.CENTER
-                    text="Ходы: 0 • Рекорд: ${previousBest ?: "—"}"
-                }
-                root.addView(progressLabel,1)
-                repeat(90) {
-                    val z=cells.indexOf(8)
-                    val neighbors=listOf(z-3,z+3,if(z%3>0)z-1 else -1,if(z%3<2)z+1 else -1).filter {it in 0..8}
-                    val n=neighbors.random()
-                    val t=cells[n];cells[n]=8;cells[z]=t
-                }
-                // A random walk can return to the solved board. Start with a
-                // real puzzle, never a zero-move reward.
-                if(cells==(0..8).toList()) {
-                    val z=cells.indexOf(8)
-                    val n=z-1
-                    cells[z]=cells[n];cells[n]=8
-                }
+                // A legal walk always produces a solvable board and never
+                // crashes if the blank lands in the top-left corner.
+                val cells = PuzzleBoard.scramble(90)
                 val board=android.widget.GridLayout(this).apply {columnCount=3;rowCount=3}
                 root.addView(board,1,LinearLayout.LayoutParams(-1,dp(360)))
                 val views=mutableListOf<ImageView>()
@@ -557,7 +535,7 @@ class MainActivity : Activity() {
                         scaleType=ImageView.ScaleType.FIT_XY
                         setOnClickListener {
                             val z=cells.indexOf(8)
-                            if((i/3==z/3 && kotlin.math.abs(i-z)==1)||kotlin.math.abs(i-z)==3) {
+                            if(PuzzleBoard.canMove(i, z)) {
                                 cells[z]=cells[i];cells[i]=8
                                 moves++
                                 draw()
