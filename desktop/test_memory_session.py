@@ -41,6 +41,29 @@ class MemorySessionTests(unittest.TestCase):
             clear_session(path)
             self.assertIsNone(load_session(path, MemoryGame, SYMBOLS))
 
+    def test_failed_backup_replacement_keeps_primary_save_and_old_backup(self):
+        from unittest.mock import patch
+        import os
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "round.json"
+            game = MemoryGame(seed=4, pair_count=2)
+            game.moves = 1
+            save_session(path, game, SYMBOLS)
+            game.moves = 2
+            save_session(path, game, SYMBOLS)
+            old_backup = path.with_suffix(".bak").read_bytes()
+            real_replace = os.replace
+            def fail_backup(source, destination):
+                if Path(destination).suffix == ".bak":
+                    raise OSError("simulated interrupted backup write")
+                return real_replace(source, destination)
+            game.moves = 3
+            with patch("memory_session.os.replace", side_effect=fail_backup):
+                save_session(path, game, SYMBOLS)
+            self.assertEqual(load_session(path, MemoryGame, SYMBOLS).moves, 3)
+            self.assertEqual(path.with_suffix(".bak").read_bytes(), old_backup)
+            self.assertEqual(list(Path(folder).glob(".nova-session-*.tmp")), [])
+
     def test_rejects_tampered_board_and_half_matched_pair(self):
         game = MemoryGame(seed=12, pair_count=2)
         game.moves = 1
