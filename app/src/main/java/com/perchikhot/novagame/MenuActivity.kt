@@ -4,6 +4,8 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
@@ -22,6 +24,25 @@ class MenuActivity:Activity() {
     private var imageRequest=0
     private val prefs by lazy {getSharedPreferences("unlock_shop",MODE_PRIVATE)}
     private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
+
+    // Deterministic cosmic particles sit above user-selected backgrounds.
+    // No photos are read or modified by this purely decorative layer.
+    private class CosmicDust(context:android.content.Context):View(context) {
+        private val random=java.util.Random(7717L)
+        private val stars=List(76) {
+            Triple(random.nextFloat(),random.nextFloat(),random.nextFloat())
+        }
+        private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas:Canvas) {
+            super.onDraw(canvas)
+            val density=resources.displayMetrics.density
+            for ((x,y,glow) in stars) {
+                paint.color=Color.argb((35f+glow*125f).toInt(),190,165,255)
+                canvas.drawCircle(x*width,y*height,
+                    (if(glow>0.82f) 1.9f else 0.9f)*density,paint)
+            }
+        }
+    }
     private val cycle=object:Runnable {
         override fun run() {
             if(!isFinishing && (screenName=="start" || screenName=="modes")) {
@@ -83,6 +104,7 @@ class MenuActivity:Activity() {
                 intArrayOf(0x55080B22,0x220C0C2C,0x99070A21.toInt()))
         }
         frame.addView(shade,FrameLayout.LayoutParams(-1,-1))
+        frame.addView(CosmicDust(this),FrameLayout.LayoutParams(-1,-1))
         setContentView(frame)
         changeBackground()
     }
