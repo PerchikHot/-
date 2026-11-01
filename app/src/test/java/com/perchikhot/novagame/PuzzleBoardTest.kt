@@ -36,4 +36,15 @@ class PuzzleBoardTest {
             fail("Expected invalid step count")
         } catch (_: IllegalArgumentException) {}
     }
+    @Test fun boardFitsPortraitAndLandscapeWithoutClipping() {
+        assertEquals(332, PuzzleBoard.boardSizeDp(360, 800))
+        assertEquals(187, PuzzleBoard.boardSizeDp(640, 360))
+        assertEquals(420, PuzzleBoard.boardSizeDp(1200, 1000))
+        assertEquals(172, PuzzleBoard.boardSizeDp(200, 400))
+        try {
+            PuzzleBoard.boardSizeDp(0, 600)
+            fail("Invalid screen width accepted")
+        } catch (_: IllegalArgumentException) {}
+    }
+
 }
