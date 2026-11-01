@@ -7,6 +7,9 @@ def parse_daily_challenge_code(code: str) -> tuple[str, int]:
     """Parse a public board code, without touching images or saved scores."""
     if not isinstance(code, str):
         raise ValueError("Challenge code must be text")
+    if len(code) > 64:
+        raise ValueError("Challenge code too long")
+    code = code.strip()
     match = re.fullmatch(r"NOVA-(\d{4})(\d{2})(\d{2})-P([2-8])", code)
     if match is None:
         raise ValueError("Invalid Nova challenge code")
