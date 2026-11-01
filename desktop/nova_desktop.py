@@ -22,10 +22,10 @@ from memory_stats import (default_stats_path, load_memory_stats, record_memory_w
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
 
-BACKGROUND = "#090e1c"
-PANEL = "#172443"
-ACCENT = "#58c9ff"
-TEXT = "#e7f0ff"
+BACKGROUND = "#0C0A22"
+PANEL = "#271A49"
+ACCENT = "#C2A0FF"
+TEXT = "#F2EBFF"
 SYMBOLS = ("★", "◆", "✦", "☾", "♠", "♥", "☀", "♣")
 IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 SLIDESHOW_DELAYS_MS = (3000, 5000, 10000)
@@ -471,14 +471,15 @@ class NovaDesktop(tk.Tk):
 
     def _button(self, parent, title, action):
         return tk.Button(parent, text=title, command=action, bg=PANEL, fg=TEXT,
-                         activebackground="#2857a0", activeforeground=TEXT,
+                         activebackground="#54377E", activeforeground=TEXT,
                          relief="flat", padx=14, pady=10, cursor="hand2")
 
     def _build(self):
         header = tk.Frame(self, bg=BACKGROUND)
         header.pack(fill="x", padx=24, pady=16)
         self._label(header, "VEYRION  /  NOVA GAME", 23).pack(side="left")
-        self._label(header, "Windows preview • offline", 11).pack(side="right")
+        self._label(header, "ФИОЛЕТОВЫЙ КОСМОС  •  OFFLINE", 11).pack(side="right")
+        tk.Frame(self, bg=ACCENT, height=2).pack(fill="x", padx=24)
         tabs = tk.Frame(self, bg=BACKGROUND)
         tabs.pack(fill="x", padx=24)
         self._button(tabs, "Игра на память", lambda: self._show("memory")).pack(side="left", padx=4)
@@ -542,7 +543,7 @@ class NovaDesktop(tk.Tk):
                 grid, command=lambda index=i: self._flip(index),
                 width=7, height=3, font=("Segoe UI Symbol", 24),
                 bg=PANEL, fg=ACCENT, relief="flat",
-                activebackground="#2857a0", activeforeground=TEXT,
+                activebackground="#54377E", activeforeground=TEXT,
             )
             columns = 2 if self.pair_count == 2 else 4
             button.grid(row=i // columns, column=i % columns, padx=6, pady=6)
