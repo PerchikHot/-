@@ -59,4 +59,18 @@ class PuzzleBoardTest {
         } catch (_: IllegalArgumentException) {}
     }
 
+    @Test fun hintIsAlwaysLegalAndNeverMutatesThePuzzle() {
+        assertNull(PuzzleBoard.suggestMove((0..8).toList()))
+        for (seed in 0 until 200) {
+            val board = PuzzleBoard.scramble(90, Random(seed))
+            val before = board.toList()
+            val hint = PuzzleBoard.suggestMove(board)
+            assertNotNull("seed $seed", hint)
+            assertTrue("seed $seed", PuzzleBoard.canMove(hint!!, board.indexOf(8)))
+            assertEquals(before, board)
+        }
+        assertEquals(7, PuzzleBoard.suggestMove(listOf(0,1,2,3,4,5,6,8,7)))
+    }
+
+
 }
