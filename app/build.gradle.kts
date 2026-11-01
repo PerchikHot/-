@@ -1,6 +1,6 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android { namespace = "com.perchikhot.novagame"; compileSdk = 35
- defaultConfig { applicationId = "com.perchikhot.novagame"; minSdk = 26; targetSdk = 35; versionCode = 21; versionName = "0.10.8" }
+ defaultConfig { applicationId = "com.perchikhot.novagame"; minSdk = 26; targetSdk = 35; versionCode = 22; versionName = "0.10.9" }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
  kotlinOptions { jvmTarget = "17" }
 }
