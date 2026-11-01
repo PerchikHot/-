@@ -24,7 +24,14 @@ class MainActivity : Activity() {
         }
         when(intent.getStringExtra("mode")) {
             "puzzle" -> puzzle()
-            "memory" -> memory()
+            "memory" -> {
+                val code=intent.getStringExtra("daily_code")
+                if(code==null) memory() else try {
+                    val (day,pairs)=DailyMemoryLayout.parseShareCode(code)
+                    memory(pairs,daily=true,importedDay=day)
+                } catch (_: IllegalArgumentException) { memory() }
+                  catch (_: java.time.DateTimeException) { memory() }
+            }
             "match3" -> match3()
             "differences" -> differences()
             "reveal" -> reveal()
@@ -187,7 +194,8 @@ class MainActivity : Activity() {
     }
     private fun memory(pairLimit:Int=6, daily:Boolean=false, perfection:Boolean=false,
         replayFiles:List<java.io.File>?=null, replayValues:List<Int>?=null,
-        limited:Boolean=false, timeTrial:Boolean=false) {
+        limited:Boolean=false, timeTrial:Boolean=false,
+        importedDay:String?=null) {
         screen(when {
             timeTrial -> "ПАМЯТЬ • НА ВРЕМЯ"
             limited -> "ПАМЯТЬ • ЛИМИТ ХОДОВ"
@@ -206,18 +214,19 @@ class MainActivity : Activity() {
         }
         // A daily seed gives the same cards and positions for the same
         // unlocked library, day and difficulty. No server or account needed.
-        val dailyDay=java.time.LocalDate.now().toString()
+        val dailyDay=importedDay ?: java.time.LocalDate.now().toString()
         val dailySeed=dailyDay.hashCode() xor (pairLimit * 7919)
         // A replay reuses exactly the same unlocked files and positions.
         // It is practice only: never award currency or update records.
-        val practice = replayFiles != null && replayValues != null &&
+        val replaying = replayFiles != null && replayValues != null &&
             replayFiles.size == pairLimit && replayFiles.size in 2..6 &&
             replayFiles.distinctBy {it.absolutePath}.size == replayFiles.size &&
             replayFiles.all {file -> allowed.any {it.absolutePath == file.absolutePath}} &&
             replayValues.size == pairLimit*2 &&
             replayValues.all {it in 0 until pairLimit} &&
             (0 until pairLimit).all {index -> replayValues.count {it==index} == 2}
-        val chosen=if(practice) replayFiles!!.toList() else
+        val practice = replaying || importedDay != null
+        val chosen=if(replaying) replayFiles!!.toList() else
             (if(daily) allowed.sortedBy {it.absolutePath}
                 .shuffled(Random(dailySeed)) else allowed.shuffled())
                 .take(minOf(pairLimit,allowed.size))
@@ -265,19 +274,19 @@ class MainActivity : Activity() {
         }
         val difficulties=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         for(pairs in listOf(2,4,6).filter {it<=allowed.size}) {
-            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection,limited=limited,timeTrial=timeTrial)},
+            difficulties.addView(button("$pairs пары") {memory(pairs,daily,perfection,limited=limited,timeTrial=timeTrial,importedDay=importedDay)},
                 LinearLayout.LayoutParams(0,dp(48),1f))
         }
         root.addView(difficulties)
         // The daily board layout is identical on Android and Windows for
         // the same date and number of pairs; each device uses its own images.
-        val values=if(practice) replayValues!!.toList() else if(daily)
+        val values=if(replaying) replayValues!!.toList() else if(daily)
             DailyMemoryLayout.positions(dailyDay, chosen.size) else
             (chosen.indices.toList()+chosen.indices.toList()).shuffled()
         add("Повторить раскладку (без наград)") {
             memory(chosen.size,daily,perfection,chosen,values,limited,timeTrial)
         }
-        if(practice) label("Тренировка: те же карточки и позиции. Монеты, рекорды и ежедневные награды отключены.",14)
+        if(practice) label("Тренировка: раскладка из кода или повтор. Монеты, рекорды и ежедневные награды отключены.",14)
         val thumbs=chosen.map {file -> ImageSampling.decodePreview(file, 256) }
         val opened=mutableSetOf<Int>()
         var first=-1

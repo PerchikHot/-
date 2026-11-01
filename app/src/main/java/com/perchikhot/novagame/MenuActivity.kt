@@ -242,6 +242,27 @@ class MenuActivity:Activity() {
             Triple("🔎  НАЙДИ ОТЛИЧИЯ","Сравни изображения","differences"),
             Triple("✨  ОТКРЫТЬ ПЛИТКИ","Открывай фотографии","reveal")
         )
+        action(col,"✦  ВВЕСТИ КОД ИСПЫТАНИЯ","Играй в раскладку друга без изменения рекордов") {
+            val field=EditText(this).apply {
+                hint="NOVA-20261101-P6"
+                inputType=android.text.InputType.TYPE_CLASS_TEXT
+                setSingleLine(true)
+            }
+            android.app.AlertDialog.Builder(this).setTitle("Код испытания")
+                .setView(field)
+                .setPositiveButton("Играть") { _,_ ->
+                    try {
+                        val code=field.text.toString().trim()
+                        DailyMemoryLayout.parseShareCode(code)
+                        startActivity(Intent(this,MainActivity::class.java)
+                            .putExtra("mode","memory").putExtra("daily_code",code))
+                    } catch (_: IllegalArgumentException) {
+                        Toast.makeText(this,"Неверный код испытания",Toast.LENGTH_LONG).show()
+                    } catch (_: java.time.DateTimeException) {
+                        Toast.makeText(this,"Неверная дата испытания",Toast.LENGTH_LONG).show()
+                    }
+                }.setNegativeButton("Отмена",null).show()
+        }
         games.forEach { (name,description,mode) ->
             action(col,name,description) {
                 startActivity(Intent(this,MainActivity::class.java).putExtra("mode",mode))

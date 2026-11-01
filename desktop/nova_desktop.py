@@ -14,10 +14,10 @@ import shlex
 from datetime import date
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 
 from PIL import Image, ImageOps, ImageTk
-from daily_layout import daily_positions, daily_challenge_code
+from daily_layout import daily_positions, daily_challenge_code, parse_daily_challenge_code
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
@@ -445,6 +445,7 @@ class NovaDesktop(tk.Tk):
         self.move_limit_mode = False
         self.time_trial_mode = False
         self.daily_mode = False
+        self.shared_challenge_day = None  # Imported boards are practice-only.
         self.daily_day = date.today().isoformat()
         self.daily_path = self.stats_path.with_name("daily_challenge.json")
         self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
@@ -520,6 +521,8 @@ class NovaDesktop(tk.Tk):
         self._button(top, "Новая игра", self._new_game).pack(side="right")
         self._button(top, "Повторить раскладку", self._replay_memory_board).pack(side="right", padx=6)
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
+        self._button(status_row, "Ввести код испытания",
+                     self._open_shared_challenge).pack(side="right", padx=6)
         if self.daily_mode:
             self._button(status_row, "Копировать код испытания",
                          self._copy_daily_challenge_code).pack(side="right", padx=6)
@@ -557,6 +560,26 @@ class NovaDesktop(tk.Tk):
         self.clipboard_append(code)
         self.update_idletasks()
         self.status.config(text=f"Код раскладки скопирован: {code}")
+
+    def _open_shared_challenge(self):
+        """Start a portable board as practice; never award daily rewards."""
+        code = simpledialog.askstring("NOVA • Код испытания",
+                                      "Вставь код NOVA-ГГГГММДД-P6:", parent=self)
+        if code is None:
+            return
+        try:
+            day, pairs = parse_daily_challenge_code(code.strip())
+        except ValueError:
+            messagebox.showerror("Неверный код", "Проверь дату и количество пар (2–8).")
+            return
+        if pairs != self.pair_count:
+            self._set_pair_count(pairs)
+        self.shared_challenge_day = day
+        self.daily_mode = True
+        self.time_trial_mode = False
+        self.move_limit_mode = False
+        self.perfect_mode = False
+        self._new_game()
 
     def _render_memory(self):
         if not self.buttons:
@@ -731,9 +754,13 @@ class NovaDesktop(tk.Tk):
             self._flip(index)
 
     def _cycle_pairs(self):
-        # Keep records for each difficulty separate, including daily rewards.
         sizes = (2, 4, 6, 8)
-        self.pair_count = sizes[(sizes.index(self.pair_count) + 1) % len(sizes)]
+        self.shared_challenge_day = None
+        self._set_pair_count(sizes[(sizes.index(self.pair_count) + 1) % len(sizes)])
+
+    def _set_pair_count(self, pairs: int):
+        # Keep records for each difficulty separate, including daily rewards.
+        self.pair_count = pairs
         suffix = "" if self.pair_count == 8 else f"_{self.pair_count}_pairs"
         self.stats_path = self.base_stats_path.with_name(f"memory_stats{suffix}.json")
         self.memory_stats = load_memory_stats(self.stats_path, self.pair_count)
@@ -753,6 +780,7 @@ class NovaDesktop(tk.Tk):
         self.after(250, self._tick_time_trial)
 
     def _toggle_time_trial_mode(self):
+        self.shared_challenge_day = None
         self.time_trial_mode = not self.time_trial_mode
         if self.time_trial_mode:
             self.daily_mode = False
@@ -761,6 +789,7 @@ class NovaDesktop(tk.Tk):
         self._new_game()
 
     def _toggle_daily_mode(self):
+        self.shared_challenge_day = None
         self.daily_mode = not self.daily_mode
         if self.daily_mode:
             self.time_trial_mode = False
@@ -770,6 +799,7 @@ class NovaDesktop(tk.Tk):
         self._new_game()
 
     def _toggle_perfect_mode(self):
+        self.shared_challenge_day = None
         self.perfect_mode = not self.perfect_mode
         if self.perfect_mode:
             self.time_trial_mode = False
@@ -779,6 +809,7 @@ class NovaDesktop(tk.Tk):
         self._new_game()
 
     def _toggle_move_limit_mode(self):
+        self.shared_challenge_day = None
         self.move_limit_mode = not self.move_limit_mode
         if self.move_limit_mode:
             self.time_trial_mode = False
@@ -798,9 +829,9 @@ class NovaDesktop(tk.Tk):
         if self._pending_hint is not None:
             self.after_cancel(self._pending_hint)
             self._pending_hint = None
-        self.practice_replay = reuse_seed
+        self.practice_replay = reuse_seed or self.shared_challenge_day is not None
         if self.daily_mode:
-            self.daily_day = date.today().isoformat()
+            self.daily_day = self.shared_challenge_day or date.today().isoformat()
             self.daily_stats = load_daily_challenge(self.daily_path, self.daily_day, self.pair_count)
             if not reuse_seed:
                 self.last_memory_seed = daily_challenge_seed(self.daily_day, self.pair_count)

@@ -14,6 +14,16 @@ internal object DailyMemoryLayout {
         return "NOVA-${day.replace("-", "")}-P$pairs"
     }
 
+    /** Imported codes select the same board on Android and Windows. */
+    fun parseShareCode(code: String): Pair<String, Int> {
+        val match = Regex("^NOVA-(\\d{4})(\\d{2})(\\d{2})-P([2-8])$").matchEntire(code)
+            ?: throw IllegalArgumentException("Invalid challenge code")
+        val day = "${match.groupValues[1]}-${match.groupValues[2]}-${match.groupValues[3]}"
+        val pairs = match.groupValues[4].toInt()
+        require(shareCode(day, pairs) == code) { "Invalid challenge date" }
+        return day to pairs
+    }
+
     fun positions(day: String, pairs: Int): List<Int> {
         require(pairs in 2..8) { "Pair count must be between 2 and 8" }
         val parsed = LocalDate.parse(day)
