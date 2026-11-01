@@ -59,6 +59,15 @@ class PuzzleBoardTest {
         } catch (_: IllegalArgumentException) {}
     }
 
+    @Test fun hintEscapesGreedyLocalMinimumAndRejectsUnsolvableState() {
+        // Both neighbors lower Manhattan distance, but only tile 3 is
+        // on an optimal route. The former greedy hint picked tile 1.
+        val board = listOf(0, 4, 1, 7, 8, 2, 3, 6, 5)
+        assertEquals(3, PuzzleBoard.suggestMove(board))
+        assertEquals(listOf(0, 4, 1, 7, 8, 2, 3, 6, 5), board)
+        assertNull(PuzzleBoard.suggestMove(listOf(1, 0, 2, 3, 4, 5, 6, 7, 8)))
+    }
+
     @Test fun hintIsAlwaysLegalAndNeverMutatesThePuzzle() {
         assertNull(PuzzleBoard.suggestMove((0..8).toList()))
         for (seed in 0 until 200) {
