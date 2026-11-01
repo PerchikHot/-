@@ -517,6 +517,7 @@ class MainActivity : Activity() {
                 // crashes if the blank lands in the top-left corner.
                 val cells = PuzzleBoard.scramble(90)
                 var moves=0
+                var hintsUsed=0
                 var rewarded=false
                 val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
                 val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
@@ -560,12 +561,13 @@ class MainActivity : Activity() {
                                 if(!rewarded && cells==(0..8).toList()) {
                                     rewarded=true
                                     val best=records.getInt("best_moves_3x3",0)
-                                    if(best<=0 || moves<best) {
+                                    if(hintsUsed==0 && (best<=0 || moves<best)) {
                                         records.edit().putInt("best_moves_3x3",moves).apply()
                                     }
-                                    progressLabel.text="Собрано за $moves ходов • Рекорд: ${records.getInt("best_moves_3x3",moves)}"
-                                    award(30)
-                                    label("Пазл собран! +30 очков. Для новой попытки нажми «Начать заново».")
+                                    progressLabel.text="Собрано за $moves ходов • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}"
+                                    val prize=if(hintsUsed==0) 30 else 10
+                                    award(prize)
+                                    label("Пазл собран! +$prize очков. Подсказок: $hintsUsed. Для новой попытки нажми «Начать заново».")
                                 }
                             }
                         }
@@ -578,6 +580,20 @@ class MainActivity : Activity() {
                     views.add(view)
                 }
                 draw()
+                add("✧ ПОДСКАЗКА (совет, не автопрохождение)") {
+                    if(!rewarded) {
+                        val suggestion=PuzzleBoard.suggestMove(cells)
+                        if(suggestion!=null) {
+                            hintsUsed++
+                            val tile=views[suggestion]
+                            tile.alpha=0.5f
+                            tile.postDelayed({ tile.alpha=1f },900L)
+                            Toast.makeText(this,
+                                "Подсвечена плитка для следующего хода. Рекорд без подсказок.",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
                 val preview=ImageView(this).apply {setImageBitmap(square);scaleType=ImageView.ScaleType.FIT_CENTER}
                 label("Образец",16)
                 root.addView(preview,LinearLayout.LayoutParams(-1,dp(150)))
