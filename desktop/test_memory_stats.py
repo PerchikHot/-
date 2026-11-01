@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 
 from memory_stats import (load_memory_stats, record_memory_win, save_memory_stats,
-                          load_best_score, updated_best_score, save_best_score)
+                          load_best_score, updated_best_score, save_best_score,
+                          load_daily_challenge, record_daily_challenge_win)
 
 
 class MemoryRecordTests(unittest.TestCase):
@@ -64,6 +65,49 @@ class MemoryRecordTests(unittest.TestCase):
                 self.assertEqual(load_best_score(target), 0)
             with self.assertRaises(ValueError):
                 updated_best_score(0, -1, eligible=True)
+
+    def test_recovers_memory_record_from_last_valid_backup(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "memory_stats.json"
+            save_memory_stats(target, {"wins": 1, "best_moves": 14})
+            save_memory_stats(target, {"wins": 2, "best_moves": 12})
+            target.write_text("{damaged", encoding="utf-8")
+            self.assertEqual(load_memory_stats(target),
+                             {"wins": 1, "best_moves": 14})
+            # A damaged primary must not overwrite the last good backup.
+            save_memory_stats(target, {"wins": 3, "best_moves": 10})
+            self.assertEqual(load_memory_stats(target.with_suffix(".json.bak")),
+                             {"wins": 1, "best_moves": 14})
+            self.assertEqual(load_memory_stats(target),
+                             {"wins": 3, "best_moves": 10})
+
+    def test_recovers_best_score_and_current_daily_challenge(self):
+        with tempfile.TemporaryDirectory() as folder:
+            score = Path(folder) / "score.json"
+            save_best_score(score, 300)
+            save_best_score(score, 500)
+            score.write_text("invalid", encoding="utf-8")
+            self.assertEqual(load_best_score(score), 300)
+
+            daily = Path(folder) / "daily.json"
+            day = "2026-11-01"
+            first = record_daily_challenge_win(
+                load_daily_challenge(daily, day), 18, day)
+            save_memory_stats(daily, first)
+            second = record_daily_challenge_win(first, 14, day)
+            save_memory_stats(daily, second)
+            daily.write_text("{", encoding="utf-8")
+            self.assertEqual(load_daily_challenge(daily, day), first)
+            self.assertEqual(load_daily_challenge(daily, "2026-11-02"),
+                             {"date": "2026-11-02", "wins": 0,
+                              "best_moves": None})
+
+    def test_rejects_invalid_stats_before_touching_disk(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "record.json"
+            with self.assertRaises(ValueError):
+                save_memory_stats(target, {"wins": True, "best_moves": 8})
+            self.assertFalse(target.exists())
 
     def test_invalid_moves_do_not_change_records(self):
         stats = {"wins": 1, "best_moves": 11}
