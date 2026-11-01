@@ -24,10 +24,12 @@ def _backup_path(path: Path) -> Path:
 def _valid_record(data: object) -> bool:
     if not isinstance(data, dict):
         return False
-    if set(data) == {"best_score"}:
+    # Older builds may have extra metadata; never discard valid progress
+    # merely because an unknown harmless field was saved alongside it.
+    if "best_score" in data and "wins" not in data:
         score = data["best_score"]
         return type(score) is int and 0 <= score <= 10_000_000
-    if set(data) in ({"wins", "best_moves"}, {"date", "wins", "best_moves"}):
+    if "wins" in data and "best_moves" in data and "best_score" not in data:
         if "date" in data:
             from datetime import date
             day = data["date"]
