@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +16,8 @@ import java.io.File
 
 class MenuActivity:Activity() {
     private val handler=Handler(Looper.getMainLooper())
+    // Two workers keep the shop responsive without decoding 90 thumbnails at once.
+    private val previewExecutor=java.util.concurrent.Executors.newFixedThreadPool(2)
     private lateinit var frame:FrameLayout
     private lateinit var background:ImageView
     private var screenName="start"
@@ -62,6 +63,11 @@ class MenuActivity:Activity() {
         handler.removeCallbacks(cycle)
         handler.postDelayed(cycle,11000)
     }
+    override fun onDestroy() {
+        handler.removeCallbacks(cycle)
+        previewExecutor.shutdownNow()
+        super.onDestroy()
+    }
     override fun onPause() {
         handler.removeCallbacks(cycle)
         super.onPause()
@@ -81,7 +87,7 @@ class MenuActivity:Activity() {
         val target=files[pictureIndex]
         val request=++imageRequest
         Thread {
-            val bitmap=BitmapFactory.decodeFile(target.absolutePath,BitmapFactory.Options().apply {inSampleSize=1})
+            val bitmap=ImageSampling.decodePreview(target,1600)
             runOnUiThread {
                 if(!isFinishing && request==imageRequest && ::background.isInitialized && bitmap!=null) {
                     background.animate().alpha(0.25f).setDuration(280).withEndAction {
@@ -135,6 +141,8 @@ class MenuActivity:Activity() {
                 setColor(0xA6222457.toInt())
                 setStroke(dp(1),0xFF9684E7.toInt())
             }
+            isFocusable=true
+            elevation=dp(4).toFloat()
             setOnClickListener {
                 animate().scaleX(.97f).scaleY(.97f).setDuration(110).withEndAction {
                     animate().scaleX(1f).scaleY(1f).setDuration(120).start()
@@ -266,8 +274,16 @@ class MenuActivity:Activity() {
             }
             val preview=ImageView(this).apply {
                 scaleType=ImageView.ScaleType.CENTER_CROP
-                if(open) setImageBitmap(BitmapFactory.decodeFile(file.absolutePath,BitmapFactory.Options().apply {inSampleSize=8}))
-                else setBackgroundColor(0xFF27254D.toInt())
+                setBackgroundColor(0xFF27254D.toInt())
+                if(open) {
+                    previewExecutor.execute {
+                        val thumbnail=ImageSampling.decodePreview(file,320)
+                        runOnUiThread {
+                            if(!isFinishing && !isDestroyed && screenName=="shop" && thumbnail!=null)
+                                setImageBitmap(thumbnail)
+                        }
+                    }
+                }
             }
             cell.addView(preview,LinearLayout.LayoutParams(-1,dp(115)))
             val cost=100
