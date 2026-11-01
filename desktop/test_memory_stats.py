@@ -102,6 +102,20 @@ class MemoryRecordTests(unittest.TestCase):
                              {"date": "2026-11-02", "wins": 0,
                               "best_moves": None})
 
+    def test_older_records_with_extra_metadata_keep_player_progress(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "old.json"
+            target.write_text(json.dumps({
+                "wins": 4, "best_moves": 11, "legacy_version": 1
+            }), encoding="utf-8")
+            self.assertEqual(load_memory_stats(target),
+                             {"wins": 4, "best_moves": 11})
+            score = Path(folder) / "old-score.json"
+            score.write_text(json.dumps({
+                "best_score": 950, "legacy_version": 1
+            }), encoding="utf-8")
+            self.assertEqual(load_best_score(score), 950)
+
     def test_rejects_invalid_stats_before_touching_disk(self):
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / "record.json"
