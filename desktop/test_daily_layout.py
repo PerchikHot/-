@@ -1,5 +1,6 @@
 import unittest
-from daily_layout import daily_positions, daily_challenge_code, parse_daily_challenge_code
+from daily_layout import (daily_positions, daily_challenge_code,
+                          parse_daily_challenge_code, shared_challenge_summary)
 
 
 class DailyLayoutTests(unittest.TestCase):
@@ -39,6 +40,15 @@ class DailyLayoutTests(unittest.TestCase):
                         "NOVA-20261101-P6" + " " * 100, "NOVA-20261101-P6\x00", None):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 parse_daily_challenge_code(invalid)
+
+    def test_shared_challenge_preview_is_explicit_and_private(self):
+        summary = shared_challenge_summary("2026-11-01", 6)
+        self.assertIn("NOVA-20261101-P6", summary)
+        self.assertIn("12 (6 пар)", summary)
+        self.assertIn("рекорды и награды не изменятся", summary)
+        self.assertNotIn("C:\\\\Users", summary)
+        with self.assertRaises(ValueError):
+            shared_challenge_summary("2026-02-30", 6)
 
     def test_invalid_inputs(self):
         for pairs in (0, 1, 9, True):
