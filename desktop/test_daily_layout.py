@@ -36,7 +36,7 @@ class DailyLayoutTests(unittest.TestCase):
                          daily_positions("2026-11-01", 6))
         for invalid in ("NOVA-20260229-P6", "NOVA-20261101-P9", "NOVA-20261101-P1",
                         "NOVA-20261101-P06", "nova-20261101-P6", "NOVA-20261101-P6/../",
-                        " NOVA-20261101-P6", "NOVA-20261101-P6\n", None):
+                        "NOVA-20261101-P6" + " " * 100, "NOVA-20261101-P6\x00", None):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 parse_daily_challenge_code(invalid)
 
