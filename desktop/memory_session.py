@@ -100,11 +100,8 @@ def load_session(path: Path, game_class, symbols):
     return None
 
 
-def save_session(path: Path, game, symbols):
-    raw = json.dumps(snapshot_session(game, symbols), ensure_ascii=False).encode("utf-8")
-    if len(raw) > MAX_BYTES:
-        raise ValueError("Checkpoint too large")
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _atomic_session_write(path: Path, raw: bytes) -> None:
+    """Replace either checkpoint without exposing a partially written JSON."""
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(mode="wb", dir=path.parent,
@@ -114,17 +111,31 @@ def save_session(path: Path, game, symbols):
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
-        # Keep the previous valid round as a recovery copy.
-        try:
-            previous = _read(path, symbols)
-            backup = json.dumps(previous, ensure_ascii=False).encode("utf-8")
-            path.with_suffix(".bak").write_bytes(backup)
-        except (OSError, ValueError, TypeError, UnicodeError):
-            pass
         os.replace(temporary, path)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def save_session(path: Path, game, symbols):
+    raw = json.dumps(snapshot_session(game, symbols), ensure_ascii=False).encode("utf-8")
+    if len(raw) > MAX_BYTES:
+        raise ValueError("Checkpoint too large")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Keep the last valid primary as a backup. A crash while replacing the
+    # backup must never truncate the previous backup or the current round.
+    try:
+        previous = _read(path, symbols)
+        backup = json.dumps(previous, ensure_ascii=False).encode("utf-8")
+        try:
+            _atomic_session_write(path.with_suffix(".bak"), backup)
+        except OSError:
+            # A backup failure must not prevent the newer valid round from
+            # being saved. The old backup is preserved by atomic replacement.
+            pass
+    except (OSError, ValueError, TypeError, UnicodeError):
+        pass
+    _atomic_session_write(path, raw)
 
 
 def clear_session(path: Path):
