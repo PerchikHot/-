@@ -12,6 +12,16 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var score = 0
     private var journeyAwarded = false
+    private var pauseTimedRound: (() -> Unit)? = null
+    private var resumeTimedRound: (() -> Unit)? = null
+    override fun onPause() {
+        pauseTimedRound?.invoke()
+        super.onPause()
+    }
+    override fun onResume() {
+        super.onResume()
+        resumeTimedRound?.invoke()
+    }
     private val bg = Color.rgb(9, 17, 39)
     private val blue = Color.rgb(41, 101, 201)
     private val symbols = listOf("★","◆","♥","☀","♣","✿")
@@ -39,6 +49,8 @@ class MainActivity : Activity() {
         }
     }
     private fun screen(title: String) {
+        pauseTimedRound = null
+        resumeTimedRound = null
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(18), dp(14), dp(18))
@@ -306,8 +318,24 @@ class MainActivity : Activity() {
         var completed=false
         var hintsUsed=0
         // Monotonic clock: changing the wall clock cannot extend the round.
-        val deadline = if(timeTrial) android.os.SystemClock.elapsedRealtime()+90_000L
+        var deadline = if(timeTrial) android.os.SystemClock.elapsedRealtime()+90_000L
             else Long.MAX_VALUE
+        var pausedAt: Long? = null
+        if(timeTrial) {
+            pauseTimedRound = {
+                if(!completed && pausedAt==null) {
+                    pausedAt = android.os.SystemClock.elapsedRealtime()
+                }
+            }
+            resumeTimedRound = {
+                val started = pausedAt
+                if(started!=null) {
+                    deadline += (android.os.SystemClock.elapsedRealtime()-started)
+                        .coerceAtLeast(0L)
+                    pausedAt = null
+                }
+            }
+        }
         val gameRoot = root
         val progress=TextView(this).apply {
             text="Найдено пар: 0/${chosen.size} • Ошибки: 0" +
@@ -325,7 +353,8 @@ class MainActivity : Activity() {
         }
         if(timeTrial) root.addView(countdown)
         fun expireIfNeeded():Boolean {
-            if(!timeTrial || completed || android.os.SystemClock.elapsedRealtime()<deadline)
+            if(!timeTrial || completed || pausedAt!=null ||
+                android.os.SystemClock.elapsedRealtime()<deadline)
                 return false
             completed=true
             locked=true
@@ -338,7 +367,8 @@ class MainActivity : Activity() {
                 override fun run() {
                     if(root !== gameRoot || isFinishing || isDestroyed || completed) return
                     if(!expireIfNeeded()) {
-                        val ms=(deadline-android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                        val ms=(deadline-(pausedAt ?: android.os.SystemClock.elapsedRealtime()))
+                            .coerceAtLeast(0L)
                         countdown.text="Осталось: ${(ms+999L)/1000L} с"
                         countdown.postDelayed(this,200L)
                     }
