@@ -6,6 +6,14 @@ import java.time.LocalDate
  * Images remain local to each device; only pair positions are identical.
  * No global RNG or saved progress is modified. */
 internal object DailyMemoryLayout {
+    /** Copyable board code, independent of the user's private image files. */
+    fun shareCode(day: String, pairs: Int): String {
+        require(pairs in 2..8) { "Pair count must be between 2 and 8" }
+        val parsed = LocalDate.parse(day)
+        require(parsed.toString() == day) { "Use ISO date" }
+        return "NOVA-${day.replace("-", "")}-P$pairs"
+    }
+
     fun positions(day: String, pairs: Int): List<Int> {
         require(pairs in 2..8) { "Pair count must be between 2 and 8" }
         val parsed = LocalDate.parse(day)

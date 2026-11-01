@@ -17,7 +17,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageOps, ImageTk
-from daily_layout import daily_positions
+from daily_layout import daily_positions, daily_challenge_code
 from memory_stats import (default_stats_path, load_memory_stats, record_memory_win,
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
@@ -519,6 +519,9 @@ class NovaDesktop(tk.Tk):
         self._button(top, "Новая игра", self._new_game).pack(side="right")
         self._button(top, "Повторить раскладку", self._replay_memory_board).pack(side="right", padx=6)
         self._button(top, f"Пары: {self.pair_count}", self._cycle_pairs).pack(side="right", padx=6)
+        if self.daily_mode:
+            self._button(status_row, "Копировать код испытания",
+                         self._copy_daily_challenge_code).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.daily_mode else "Вызов дня",
                      self._toggle_daily_mode).pack(side="right", padx=6)
         self._button(top, "Обычная игра" if self.time_trial_mode else "На время (90с)",
@@ -545,6 +548,14 @@ class NovaDesktop(tk.Tk):
             button.grid(row=i // columns, column=i % columns, padx=6, pady=6)
             self.buttons.append(button)
         self._render_memory()
+
+    def _copy_daily_challenge_code(self):
+        """Share the same daily card layout without exposing local pictures."""
+        code = daily_challenge_code(self.daily_day, self.pair_count)
+        self.clipboard_clear()
+        self.clipboard_append(code)
+        self.update_idletasks()
+        self.status.config(text=f"Код раскладки скопирован: {code}")
 
     def _render_memory(self):
         if not self.buttons:

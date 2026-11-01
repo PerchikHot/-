@@ -245,6 +245,12 @@ class MainActivity : Activity() {
         } else {
             label("Сложность: ${chosen.size} пары • Побед: ${records.getInt(winsKey,0)} • Лучший результат: ${previousBest ?: "—"} ошибок • Лучшие очки: ${records.getInt(bestPointsKey,0)}",14)
         }
+        if(daily) add("Скопировать код испытания") {
+            val code = DailyMemoryLayout.shareCode(dailyDay, chosen.size)
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Nova daily challenge", code))
+            android.widget.Toast.makeText(this, "Код раскладки: $code", android.widget.Toast.LENGTH_SHORT).show()
+        }
         add(if(daily) "Обычная игра" else "Испытание дня") {
             memory(pairLimit,!daily,false)
         }

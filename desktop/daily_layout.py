@@ -17,3 +17,13 @@ def daily_positions(day: str, pairs: int) -> list[int]:
         j = state % (i + 1)
         result[i], result[j] = result[j], result[i]
     return result
+
+
+def daily_challenge_code(day: str, pairs: int) -> str:
+    """A portable board identifier, never a gallery path or private image."""
+    if type(pairs) is not int or not 2 <= pairs <= 8:
+        raise ValueError("Unsupported daily challenge difficulty")
+    parsed = date.fromisoformat(day)
+    if parsed.isoformat() != day:
+        raise ValueError("Use ISO date for daily challenge")
+    return f"NOVA-{day.replace('-', '')}-P{pairs}"

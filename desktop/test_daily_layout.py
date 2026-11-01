@@ -1,5 +1,5 @@
 import unittest
-from daily_layout import daily_positions
+from daily_layout import daily_positions, daily_challenge_code
 
 
 class DailyLayoutTests(unittest.TestCase):
@@ -18,6 +18,15 @@ class DailyLayoutTests(unittest.TestCase):
             values = daily_positions("2026-11-03", pairs)
             self.assertEqual(len(values), pairs * 2)
             self.assertTrue(all(values.count(i) == 2 for i in range(pairs)))
+
+    def test_portable_daily_challenge_code(self):
+        self.assertEqual(daily_challenge_code("2026-11-01", 6),
+                         "NOVA-20261101-P6")
+        for day, pairs in [("2026-02-30", 6), ("2026-11-01", True),
+                           ("2026-11-01", 9), ("01/11/2026", 4)]:
+            with self.subTest(day=day, pairs=pairs):
+                with self.assertRaises(ValueError):
+                    daily_challenge_code(day, pairs)
 
     def test_invalid_inputs(self):
         for pairs in (0, 1, 9, True):

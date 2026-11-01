@@ -12,6 +12,19 @@ class DailyMemoryLayoutTest {
             DailyMemoryLayout.positions("2026-10-31", 6))
     }
 
+    @Test fun portableChallengeCodeMatchesWindows() {
+        assertEquals("NOVA-20261101-P6",
+            DailyMemoryLayout.shareCode("2026-11-01", 6))
+        try {
+            DailyMemoryLayout.shareCode("2026-02-30", 6)
+            throw AssertionError("Invalid day accepted")
+        } catch (_: java.time.DateTimeException) { }
+        try {
+            DailyMemoryLayout.shareCode("2026-11-01", 9)
+            throw AssertionError("Invalid difficulty accepted")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun stableAndTwoOfEachPair() {
         val first = DailyMemoryLayout.positions("2026-11-01", 6)
         assertEquals(first, DailyMemoryLayout.positions("2026-11-01", 6))
