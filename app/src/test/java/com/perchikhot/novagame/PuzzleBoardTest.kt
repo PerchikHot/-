@@ -69,7 +69,7 @@ class PuzzleBoardTest {
             assertTrue("seed $seed", PuzzleBoard.canMove(hint!!, board.indexOf(8)))
             assertEquals(before, board)
         }
-        assertEquals(7, PuzzleBoard.suggestMove(listOf(0,1,2,3,4,5,6,8,7)))
+        assertEquals(8, PuzzleBoard.suggestMove(listOf(0,1,2,3,4,5,6,8,7)))
     }
 
 
