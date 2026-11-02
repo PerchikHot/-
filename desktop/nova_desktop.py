@@ -578,6 +578,7 @@ class NovaDesktop(tk.Tk):
         tabs.pack(fill="x", padx=24)
         self._button(tabs, "Игра на память", lambda: self._show("memory")).pack(side="left", padx=4)
         self._button(tabs, "Моя галерея", lambda: self._show("gallery")).pack(side="left", padx=4)
+        self._button(tabs, "☄ Вызов дня", self._start_daily_today).pack(side="left", padx=4)
         self.content = tk.Frame(self, bg=BACKGROUND)
         self.content.pack(fill="both", expand=True, padx=24, pady=12)
         self._show("memory")
@@ -923,6 +924,15 @@ class NovaDesktop(tk.Tk):
             self.daily_mode = False
             self.perfect_mode = False
             self.move_limit_mode = False
+        self._new_game()
+
+    def _start_daily_today(self):
+        """One-click daily board, not an imported practice code."""
+        self.shared_challenge_day = None
+        self.daily_mode = True
+        self.time_trial_mode = False
+        self.perfect_mode = False
+        self.move_limit_mode = False
         self._new_game()
 
     def _toggle_daily_mode(self):

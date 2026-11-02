@@ -176,6 +176,14 @@ class MenuActivity:Activity() {
         action(col,"▶  ИГРАТЬ") {
             showModes()
         }
+        action(col,"☄  ИСПЫТАНИЕ ДНЯ","Одна раскладка на Android и Windows • награда за победу") {
+            if(unlocked().size < 2) {
+                Toast.makeText(this,"Открой минимум два изображения для испытания",Toast.LENGTH_LONG).show()
+            } else {
+                startActivity(Intent(this,MainActivity::class.java)
+                    .putExtra("mode","memory").putExtra("daily_today",true))
+            }
+        }
         action(col,"🎮  ТРИ ИГРОВЫХ ПРОТОТИПА","Попробуй разные ощущения от игры") {showPrototypes()}
         action(col,"✦  ПУТЬ КОЛЛЕКЦИОНЕРА","Уровни, звёзды и новые открытия") {showJourney()}
         action(col,"✦  МАГАЗИН ПЕРСОНАЖЕЙ") {showShop()}

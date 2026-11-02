@@ -36,7 +36,7 @@ class MainActivity : Activity() {
             "puzzle" -> puzzle()
             "memory" -> {
                 val code=intent.getStringExtra("daily_code")
-                if(code==null) memory() else try {
+                if(code==null) memory(daily=intent.getBooleanExtra("daily_today",false)) else try {
                     val (day,pairs)=DailyMemoryLayout.parseShareCode(code)
                     memory(pairs,daily=true,importedDay=day)
                 } catch (_: IllegalArgumentException) { memory() }
