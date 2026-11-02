@@ -21,6 +21,17 @@ class MemoryHintSelectionTests(unittest.TestCase):
         first.hide_hint()
         self.assertIsNone(first.peek_pair())
 
+    def test_second_hint_reveals_a_different_unmatched_pair(self):
+        game = MemoryGame(seed=123, pair_count=8)
+        first = game.peek_pair()
+        self.assertIsNotNone(first)
+        game.hide_hint()
+        second = game.peek_pair()
+        self.assertIsNotNone(second)
+        self.assertNotEqual(first, second)
+        self.assertEqual(game.hints_used, 2)
+        self.assertIsNone(game.peek_pair())
+
     def test_hint_breaks_combo_but_never_erases_earned_points(self):
         game = MemoryGame(seed=9, pair_count=4)
         pair = [i for i, card in enumerate(game.cards)
