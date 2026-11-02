@@ -96,6 +96,19 @@ class PuzzleBoardTest {
         assertNull(PuzzleBoard.suggestMove(listOf(1, 0, 2, 3, 4, 5, 6, 7, 8)))
     }
 
+    @Test fun hintTextMatchesActualSlideDirection() {
+        val board = listOf(0, 1, 2, 3, 8, 4, 6, 7, 5)
+        assertTrue(PuzzleBoard.hintInstruction(board, 3).contains("вправо"))
+        assertTrue(PuzzleBoard.hintInstruction(board, 5).contains("влево"))
+        assertTrue(PuzzleBoard.hintInstruction(board, 1).contains("вниз"))
+        assertTrue(PuzzleBoard.hintInstruction(board, 7).contains("вверх"))
+        assertEquals(board, listOf(0, 1, 2, 3, 8, 4, 6, 7, 5))
+        try {
+            PuzzleBoard.hintInstruction(board, 0)
+            fail("Nonadjacent hint accepted")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun hintIsAlwaysLegalAndNeverMutatesThePuzzle() {
         assertNull(PuzzleBoard.suggestMove((0..8).toList()))
         for (seed in 0 until 200) {
