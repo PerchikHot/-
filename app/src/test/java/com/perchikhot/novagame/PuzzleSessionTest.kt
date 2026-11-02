@@ -24,6 +24,16 @@ class PuzzleSessionTest {
         assertTrue(PuzzleSession.canResume(saved, true))
         assertFalse(PuzzleSession.canResume(saved, false))
         assertFalse(PuzzleSession.canResume(null, true))
+        // A caller may construct a Round without going through decode().
+        // Never reopen a solved, impossible or corrupt board as an active game.
+        assertFalse(PuzzleSession.canResume(
+            PuzzleSession.Round(uri, (0..8).toList(), 4, 0), true))
+        assertFalse(PuzzleSession.canResume(
+            PuzzleSession.Round(uri, listOf(1,0,2,3,4,5,6,7,8), 4, 0), true))
+        assertFalse(PuzzleSession.canResume(
+            PuzzleSession.Round("https://remote.invalid/picture", board, 4, 0), true))
+        assertFalse(PuzzleSession.canResume(
+            PuzzleSession.Round(uri, board, -1, 0), true))
     }
 
     @Test fun rejectsCorruptOrImpossibleProgress() {

@@ -11,7 +11,9 @@ internal object PuzzleSession {
 
     /** Never resume an old puzzle against a different or inaccessible photo. */
     fun canResume(round: Round?, imageReadable: Boolean): Boolean =
-        round != null && imageReadable
+        round != null && imageReadable &&
+            valid(round.uri, round.cells, round.moves, round.hints) &&
+            round.cells != (0..8).toList()
 
     fun encode(uri: String, cells: List<Int>, moves: Int, hints: Int): String? {
         if (!valid(uri, cells, moves, hints) || cells == (0..8).toList()) return null
