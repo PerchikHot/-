@@ -24,6 +24,15 @@ class PuzzleBoardTest {
         assertFalse(PuzzleBoard.canMove(-1, 0))
     }
 
+    @Test fun completedPuzzleCannotBeMovedOrResavedByLateTaps() {
+        // A win grants points and deletes the unfinished checkpoint.
+        // Touch events queued immediately afterward must not recreate it.
+        assertTrue(PuzzleBoard.canAcceptMove(false, 7, 8))
+        assertFalse(PuzzleBoard.canAcceptMove(true, 7, 8))
+        assertFalse(PuzzleBoard.canAcceptMove(false, 0, 8))
+        assertFalse(PuzzleBoard.canAcceptMove(true, 0, 8))
+    }
+
     @Test fun everySeedProducesNontrivialSolvablePermutation() {
         val solved = (0..8).toList()
         for (seed in 0 until 200) {
