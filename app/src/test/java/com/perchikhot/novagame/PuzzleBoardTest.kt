@@ -38,7 +38,7 @@ class PuzzleBoardTest {
 
     @Test fun progressLabelReportsOnlyLowerBoundNotExactSolution() {
         assertEquals("Пазл собран", PuzzleBoard.remainingMovesLabel((0..8).toList()))
-        assertEquals("До решения: не менее 1 ходов",
+        assertEquals("До решения: не менее 1 ход",
             PuzzleBoard.remainingMovesLabel(listOf(0,1,2,3,4,5,6,8,7)))
         assertEquals("До решения: не менее 12 ходов",
             PuzzleBoard.remainingMovesLabel(listOf(4,7,1,0,6,2,8,3,5)))
