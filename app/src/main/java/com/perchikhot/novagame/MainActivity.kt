@@ -589,11 +589,13 @@ class MainActivity : Activity() {
                 var moves=if(resumed) restored?.moves ?: 0 else 0
                 var hintsUsed=if(resumed) restored?.hints ?: 0 else 0
                 var rewarded=false
-                var lastMoveBefore: List<Int>? = null
+                // v3 checkpoint restores the last legal undo even after an
+                // Android process kill. Older v1/v2 rounds simply have none.
+                var lastMoveBefore: List<Int>? = if(resumed) restored?.previous else null
                 // A move or hint is not accepted until its checkpoint is
                 // durable. Otherwise a process kill silently loses progress.
                 fun checkpoint(): Boolean {
-                    val value=uri?.let { PuzzleSession.encode(it.toString(),cells,moves,hintsUsed) }
+                    val value=uri?.let { PuzzleSession.encode(it.toString(),cells,moves,hintsUsed,lastMoveBefore) }
                     val saved=value!=null &&
                         checkpointPrefs.edit().putString("round_v1",value).commit()
                     if(!saved) {
@@ -638,9 +640,11 @@ class MainActivity : Activity() {
                             val z=cells.indexOf(8)
                             if(PuzzleBoard.canMove(i, z)) {
                                 val before=cells.toList()
+                                val oldUndo=lastMoveBefore
                                 cells[z]=cells[i];cells[i]=8
                                 moves++
                                 val solved=cells==(0..8).toList()
+                                lastMoveBefore = if(solved) null else before
                                 // A completed board cannot be encoded as an
                                 // unfinished checkpoint. Remove the old save
                                 // BEFORE awarding points; rollback on failure.
@@ -648,10 +652,10 @@ class MainActivity : Activity() {
                                     .remove("round_v1").commit() else checkpoint()
                                 if(!saved) {
                                     cells.clear();cells.addAll(before);moves--
+                                    lastMoveBefore=oldUndo
                                     Toast.makeText(this@MainActivity,"Ход не сохранён",Toast.LENGTH_SHORT).show()
                                     return@setOnClickListener
                                 }
-                                lastMoveBefore = if(solved) null else before
                                 draw()
                                 progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
                                 if(!rewarded && solved) {
@@ -687,14 +691,17 @@ class MainActivity : Activity() {
                         } else {
                             val current = cells.toList()
                             cells.clear();cells.addAll(restoredBoard)
+                            // Consume the one-step undo before writing v3:
+                            // otherwise a resumed game could undo indefinitely.
+                            lastMoveBefore = null
                             // Persist BEFORE redrawing. A failed disk write
                             // must not show a board different from the save.
                             if (checkpoint()) {
-                                lastMoveBefore = null
                                 draw()
                                 progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
                             } else {
                                 cells.clear();cells.addAll(current)
+                                lastMoveBefore = previous
                             }
                         }
                     }
