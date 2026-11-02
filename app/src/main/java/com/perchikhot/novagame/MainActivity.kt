@@ -588,7 +588,7 @@ class MainActivity : Activity() {
                     textSize=17f
                     setTextColor(Color.rgb(177,215,255))
                     gravity=Gravity.CENTER
-                    text="Ходы: $moves • Рекорд: ${previousBest ?: "—"}"
+                    text="Ходы: $moves • Рекорд: ${previousBest ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
                 }
                 root.addView(progressLabel,1)
                 val metrics = resources.displayMetrics
@@ -621,7 +621,7 @@ class MainActivity : Activity() {
                                 moves++
                                 checkpoint()
                                 draw()
-                                progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}"
+                                progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
                                 if(!rewarded && cells==(0..8).toList()) {
                                     rewarded=true
                                     checkpointPrefs.edit().remove("round_v1").commit()
