@@ -19,6 +19,13 @@ class PuzzleSessionTest {
         assertNull(PuzzleSession.encode(uri,(0..8).toList(),42,3))
     }
 
+    @Test fun refusesToResumeWhenSavedPhotoIsNoLongerReadable() {
+        val saved = PuzzleSession.decode(PuzzleSession.encode(uri, board, 42, 3))
+        assertTrue(PuzzleSession.canResume(saved, true))
+        assertFalse(PuzzleSession.canResume(saved, false))
+        assertFalse(PuzzleSession.canResume(null, true))
+    }
+
     @Test fun rejectsCorruptOrImpossibleProgress() {
         val valid = PuzzleSession.encode(uri,board,42,3)!!
         // Preserve old users' unfinished puzzles, but checksum every new save.

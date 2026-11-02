@@ -9,6 +9,10 @@ import java.util.zip.CRC32
 internal object PuzzleSession {
     data class Round(val uri: String, val cells: List<Int>, val moves: Int, val hints: Int)
 
+    /** Never resume an old puzzle against a different or inaccessible photo. */
+    fun canResume(round: Round?, imageReadable: Boolean): Boolean =
+        round != null && imageReadable
+
     fun encode(uri: String, cells: List<Int>, moves: Int, hints: Int): String? {
         if (!valid(uri, cells, moves, hints) || cells == (0..8).toList()) return null
         val payload = "$moves|$hints|${cells.joinToString(",")}|$uri"

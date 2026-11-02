@@ -522,18 +522,36 @@ class MainActivity : Activity() {
         label("Загружаем случайную фотографию…",16)
         back()
         val checkpointPrefs=getSharedPreferences("puzzle_checkpoint",MODE_PRIVATE)
-        val restored=PuzzleSession.decode(checkpointPrefs.getString("round_v1",null))
+        val savedCheckpoint=checkpointPrefs.getString("round_v1",null)
+        val restored=PuzzleSession.decode(savedCheckpoint)
         Thread {
-            val uri=restored?.uri?.let { android.net.Uri.parse(it) }
-                ?: ImageLibrary.randomUri(this)
-            val bitmap=if(uri!=null) try {
-                val source=android.graphics.ImageDecoder.createSource(contentResolver,uri)
-                android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                    val size=minOf(info.size.width,info.size.height)
-                    decoder.setTargetSize(600,600)
-                }
-            } catch (_:Exception) {null} else null
+            fun decodePhoto(photoUri: android.net.Uri?): android.graphics.Bitmap? {
+                if(photoUri==null) return null
+                return try {
+                    val source=android.graphics.ImageDecoder.createSource(contentResolver,photoUri)
+                    android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                        decoder.setTargetSize(600,600)
+                    }
+                } catch (_:Exception) {null}
+            }
+            val oldUri=restored?.uri?.let { android.net.Uri.parse(it) }
+            val oldBitmap=decodePhoto(oldUri)
+            // A revoked photo URI must not trap the player on a blank screen.
+            // Preserve the old checkpoint for recovery before starting fresh.
+            val fallbackUri=if(oldBitmap==null) ImageLibrary.randomUri(this) else null
+            val fallbackBitmap=if(oldBitmap==null) decodePhoto(fallbackUri) else null
+            val uri=if(oldBitmap!=null) oldUri else fallbackUri
+            val bitmap=oldBitmap ?: fallbackBitmap
+            val resumed=PuzzleSession.canResume(restored,oldBitmap!=null)
+            val backupOk=if(restored!=null && !resumed && bitmap!=null) {
+                checkpointPrefs.edit().putString("unavailable_round_backup_v1",
+                    savedCheckpoint).commit()
+            } else true
             runOnUiThread {
+                if(!backupOk) {
+                    label("Не удалось сохранить резервную копию партии. Исходный прогресс не изменён.")
+                    return@runOnUiThread
+                }
                 if(root!==page) return@runOnUiThread
                 if(bitmap==null) {
                     label("Нет доступных фото. Импортируй ZIP через «Мои папки».")
@@ -548,9 +566,9 @@ class MainActivity : Activity() {
                 }
                 // A legal walk always produces a solvable board and never
                 // crashes if the blank lands in the top-left corner.
-                val cells = restored?.cells?.toMutableList() ?: PuzzleBoard.scramble(90)
-                var moves=restored?.moves ?: 0
-                var hintsUsed=restored?.hints ?: 0
+                val cells = (if(resumed) restored?.cells else null)?.toMutableList() ?: PuzzleBoard.scramble(90)
+                var moves=if(resumed) restored?.moves ?: 0 else 0
+                var hintsUsed=if(resumed) restored?.hints ?: 0 else 0
                 var rewarded=false
                 fun checkpoint() {
                     if(uri!=null) {
@@ -560,7 +578,7 @@ class MainActivity : Activity() {
                         }
                     }
                 }
-                if(restored==null) checkpoint()
+                if(!resumed) checkpoint()
                 val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
                 val previousBest=records.getInt("best_moves_3x3",0).takeIf {it>0}
                 val progressLabel=TextView(this).apply {
@@ -643,7 +661,8 @@ class MainActivity : Activity() {
                     checkpointPrefs.edit().remove("round_v1").commit()
                     puzzle()
                 }
-                if(restored!=null) label("Продолжена сохранённая партия • $moves ходов",14)
+                if(resumed) label("Продолжена сохранённая партия • $moves ходов",14)
+                else if(restored!=null) label("Фото старой партии недоступно. Прогресс сохранён в резервной копии.",14)
                 val preview=ImageView(this).apply {setImageBitmap(square);scaleType=ImageView.ScaleType.FIT_CENTER}
                 label("Образец",16)
                 root.addView(preview,LinearLayout.LayoutParams(-1,dp(150)))
