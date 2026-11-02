@@ -26,6 +26,19 @@ class MemoryHintSelectorTest {
         assertEquals(before, cards)
     }
 
+    @Test fun secondHintDoesNotWasteQuotaOnSamePair() {
+        val cards = listOf(0, 1, 2, 0, 1, 2)
+        val first = MemoryHintSelector.choose(cards, emptySet(), Random(7))!!
+        val second = MemoryHintSelector.choose(cards, emptySet(), Random(7),
+            previouslyShown = setOf(first))
+        assertNotNull(second)
+        assertNotEquals(first, second)
+        val allShown = MemoryHintSelector.candidates(cards, emptySet()).toSet()
+        assertNull(MemoryHintSelector.choose(cards, emptySet(), Random(7),
+            previouslyShown = allShown))
+        assertEquals(listOf(0, 1, 2, 0, 1, 2), cards)
+    }
+
     @Test fun completedBoardHasNoHint() {
         val cards = listOf(0, 1, 0, 1)
         assertNull(MemoryHintSelector.choose(cards, setOf(0, 1, 2, 3)))

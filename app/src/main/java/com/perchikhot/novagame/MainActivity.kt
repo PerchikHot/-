@@ -317,6 +317,7 @@ class MainActivity : Activity() {
         var roundPoints=0
         var completed=false
         var hintsUsed=0
+        val hintedPairs = mutableSetOf<Pair<Int, Int>>()
         // Monotonic clock: changing the wall clock cannot extend the round.
         var deadline = if(timeTrial) android.os.SystemClock.elapsedRealtime()+90_000L
             else Long.MAX_VALUE
@@ -506,7 +507,8 @@ class MainActivity : Activity() {
             if(!perfection && !limited && !timeTrial && !completed && !locked && first<0 && hintsUsed<2) {
                 // Choose fairly among all remaining pairs rather than
                 // revealing the first symbol on every ordinary round.
-                MemoryHintSelector.choose(values,opened)?.let {(a,b) ->
+                MemoryHintSelector.choose(values,opened,previouslyShown=hintedPairs)?.let {(a,b) ->
+                    hintedPairs.add(a to b)
                     hintsUsed++
                     locked=true
                     show(a);show(b)

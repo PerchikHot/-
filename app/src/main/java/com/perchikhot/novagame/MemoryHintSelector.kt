@@ -17,8 +17,11 @@ internal object MemoryHintSelector {
     }
 
     /** Do not always reveal the first pair; preserve matched cards and quota. */
-    fun choose(values: List<Int>, opened: Set<Int>, random: Random = Random.Default): Pair<Int, Int>? {
-        val available = candidates(values, opened)
-        return if (available.isEmpty()) null else available.random(random)
+    fun choose(values: List<Int>, opened: Set<Int>, random: Random = Random.Default,
+               previouslyShown: Set<Pair<Int, Int>> = emptySet()): Pair<Int, Int>? {
+        // A hint consumes one of only two chances. Do not reveal the same
+        // unmatched pair twice when the player has not solved it yet.
+        val fresh = candidates(values, opened).filter { it !in previouslyShown }
+        return if (fresh.isEmpty()) null else fresh.random(random)
     }
 }
