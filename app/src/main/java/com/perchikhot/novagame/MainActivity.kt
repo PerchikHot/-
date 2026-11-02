@@ -576,13 +576,16 @@ class MainActivity : Activity() {
                 var moves=if(resumed) restored?.moves ?: 0 else 0
                 var hintsUsed=if(resumed) restored?.hints ?: 0 else 0
                 var rewarded=false
-                fun checkpoint() {
-                    if(uri!=null) {
-                        val value=PuzzleSession.encode(uri.toString(),cells,moves,hintsUsed)
-                        if(value!=null && !checkpointPrefs.edit().putString("round_v1",value).commit()) {
-                            Toast.makeText(this,"Не удалось сохранить пазл",Toast.LENGTH_SHORT).show()
-                        }
+                // A move or hint is not accepted until its checkpoint is
+                // durable. Otherwise a process kill silently loses progress.
+                fun checkpoint(): Boolean {
+                    val value=uri?.let { PuzzleSession.encode(it.toString(),cells,moves,hintsUsed) }
+                    val saved=value!=null &&
+                        checkpointPrefs.edit().putString("round_v1",value).commit()
+                    if(!saved) {
+                        Toast.makeText(this,"Не удалось сохранить пазл",Toast.LENGTH_SHORT).show()
                     }
+                    return saved
                 }
                 if(!resumed) checkpoint()
                 val records=getSharedPreferences("puzzle_records",MODE_PRIVATE)
@@ -620,14 +623,24 @@ class MainActivity : Activity() {
                         setOnClickListener {
                             val z=cells.indexOf(8)
                             if(PuzzleBoard.canMove(i, z)) {
+                                val before=cells.toList()
                                 cells[z]=cells[i];cells[i]=8
                                 moves++
-                                checkpoint()
+                                val solved=cells==(0..8).toList()
+                                // A completed board cannot be encoded as an
+                                // unfinished checkpoint. Remove the old save
+                                // BEFORE awarding points; rollback on failure.
+                                val saved=if(solved) checkpointPrefs.edit()
+                                    .remove("round_v1").commit() else checkpoint()
+                                if(!saved) {
+                                    cells.clear();cells.addAll(before);moves--
+                                    Toast.makeText(this,"Ход не сохранён",Toast.LENGTH_SHORT).show()
+                                    return@setOnClickListener
+                                }
                                 draw()
                                 progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
-                                if(!rewarded && cells==(0..8).toList()) {
+                                if(!rewarded && solved) {
                                     rewarded=true
-                                    checkpointPrefs.edit().remove("round_v1").commit()
                                     val best=records.getInt("best_moves_3x3",0)
                                     if(hintsUsed==0 && (best<=0 || moves<best)) {
                                         records.edit().putInt("best_moves_3x3",moves).apply()
@@ -653,13 +666,16 @@ class MainActivity : Activity() {
                         val suggestion=PuzzleBoard.suggestMove(cells)
                         if(suggestion!=null) {
                             hintsUsed++
-                            checkpoint()
-                            val tile=views[suggestion]
-                            tile.alpha=0.5f
-                            tile.postDelayed({ tile.alpha=1f },900L)
-                            Toast.makeText(this,
-                                "Подсвечена плитка для следующего хода. Рекорд без подсказок.",
-                                Toast.LENGTH_SHORT).show()
+                            if(checkpoint()) {
+                                val tile=views[suggestion]
+                                tile.alpha=0.5f
+                                tile.postDelayed({ tile.alpha=1f },900L)
+                                Toast.makeText(this,
+                                    "Подсвечена плитка для следующего хода. Рекорд без подсказок.",
+                                    Toast.LENGTH_SHORT).show()
+                            } else {
+                                hintsUsed-- // Do not charge a hint that was not saved.
+                            }
                         }
                     }
                 }
