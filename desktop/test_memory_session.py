@@ -79,6 +79,21 @@ class MemorySessionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             restore_session(forged, MemoryGame, SYMBOLS)
 
+    def test_rejects_impossible_streak_even_with_valid_legacy_format(self):
+        game = MemoryGame(seed=13, pair_count=4)
+        game.moves = 2
+        checkpoint = snapshot_session(game, SYMBOLS)
+        # Legacy v1 has no checksum; semantic validation still matters.
+        checkpoint["version"] = 1
+        checkpoint.pop("checksum")
+        checkpoint["match_streak"] = 1
+        checkpoint["best_streak"] = 1
+        with self.assertRaises(ValueError):
+            restore_session(checkpoint, MemoryGame, SYMBOLS)
+        checkpoint["match_streak"] = 0
+        with self.assertRaises(ValueError):
+            restore_session(checkpoint, MemoryGame, SYMBOLS)
+
     def test_v2_checksum_rejects_plausible_but_modified_checkpoint(self):
         game = MemoryGame(seed=12, pair_count=4)
         clean = snapshot_session(game, SYMBOLS)
