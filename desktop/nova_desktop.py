@@ -318,6 +318,7 @@ class MemoryGame:
         self.moves = 0
         self.hints_used = 0
         self.hint_indices: set[int] = set()
+        self._hinted_pairs: set[tuple[int, int]] = set()
         self.match_streak = 0
         self.best_streak = 0
         # In-round points reward consecutive correct pairs; never persisted
@@ -404,7 +405,11 @@ class MemoryGame:
         # Previously hints always exposed the first unmatched symbol, making
         # repeated games predictable. Use the round RNG for fair, seeded
         # selection while preserving the two-hint quota and save format.
-        chosen = self._rng.choice(available)
+        # The second hint should teach a NEW pair when another unmatched
+        # pair exists. Repeated hints used to waste the player's last hint.
+        unseen = [pair for pair in available if pair not in self._hinted_pairs]
+        chosen = self._rng.choice(unseen or available)
+        self._hinted_pairs.add(chosen)
         self.hints_used += 1
         # A revealed pair is assistance: break the live combo before the
         # next match, but preserve earned points and the best streak HUD.
