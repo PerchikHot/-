@@ -688,7 +688,7 @@ class MainActivity : Activity() {
                                 tile.alpha=0.5f
                                 tile.postDelayed({ tile.alpha=1f },900L)
                                 Toast.makeText(this,
-                                    "Подсвечена плитка для следующего хода. Рекорд без подсказок.",
+                                    PuzzleBoard.hintInstruction(cells, suggestion),
                                     Toast.LENGTH_SHORT).show()
                             } else {
                                 hintsUsed-- // Do not charge a hint that was not saved.
