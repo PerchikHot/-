@@ -49,6 +49,21 @@ internal object PuzzleBoard {
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
+    /** Revert exactly one legal slide; never accept an arbitrary old board.
+     * UI keeps the move count as a penalty, so undo cannot farm records.
+     */
+    fun undoLastMove(current: List<Int>, previous: List<Int>): List<Int>? {
+        if (current.size != 9 || previous.size != 9 ||
+            current.sorted() != solved || previous.sorted() != solved) return null
+        val oldBlank = previous.indexOf(8)
+        val newBlank = current.indexOf(8)
+        if (!canMove(newBlank, oldBlank)) return null
+        val expected = previous.toMutableList()
+        expected[oldBlank] = expected[newBlank]
+        expected[newBlank] = 8
+        return previous.toList().takeIf { expected == current }
+    }
+
     /** Explain the suggested legal move, not merely flash a tile.
      * Accessible direction text works when highlighting is hard to see.
      * This never moves a tile or changes hints/score by itself.
