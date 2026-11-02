@@ -61,6 +61,9 @@ def validate_session(data, symbols):
             type(hints) is not int or not 0 <= hints <= 2 or
             type(streak) is not int or not 0 <= streak <= pairs or
             type(best) is not int or not streak <= best <= pairs or
+            # A streak cannot exceed pairs already solved in this round.
+            # Restoring forged progress would inflate the gameplay HUD.
+            streak > len(matched) // 2 or best > len(matched) // 2 or
             type(score) is not int or not 0 <= score <= 10000000):
         raise ValueError("Invalid round counters")
     if len(matched) == len(cards):
