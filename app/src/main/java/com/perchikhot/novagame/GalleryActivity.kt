@@ -238,11 +238,31 @@ class GalleryActivity : Activity() {
         val uris=mutableListOf<Uri>()
         data.data?.let {uris.add(it)}
         data.clipData?.let {clip->for(i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)}
-        uris.forEach { uri->
-            try {contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)} catch (_:Exception) {}
-            if(uri.toString() !in items) items.add(uri.toString())
+        var unavailable = 0
+        uris.distinctBy { it.toString() }.forEach { uri ->
+            val persisted = try {
+                contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                true
+            } catch (_: SecurityException) {
+                false
+            } catch (_: IllegalArgumentException) {
+                false
+            }
+            val address = uri.toString()
+            if (GalleryImportPolicy.shouldSave(address, persisted)) {
+                if (address !in items) items.add(address)
+            } else {
+                unavailable++
+            }
         }
-        save(items);draw()
+        save(items)
+        draw()
+        if (unavailable > 0) {
+            Toast.makeText(this,
+                "Не удалось сохранить доступ к $unavailable изображениям. Выбери их через «Файлы».",
+                Toast.LENGTH_LONG).show()
+        }
     }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed(){
