@@ -638,7 +638,7 @@ class MainActivity : Activity() {
                         scaleType=ImageView.ScaleType.FIT_XY
                         setOnClickListener {
                             val z=cells.indexOf(8)
-                            if(PuzzleBoard.canMove(i, z)) {
+                            if(PuzzleBoard.canAcceptMove(rewarded, i, z)) {
                                 val before=cells.toList()
                                 val oldUndo=lastMoveBefore
                                 cells[z]=cells[i];cells[i]=8
