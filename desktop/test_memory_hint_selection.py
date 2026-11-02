@@ -21,6 +21,23 @@ class MemoryHintSelectionTests(unittest.TestCase):
         first.hide_hint()
         self.assertIsNone(first.peek_pair())
 
+    def test_hint_breaks_combo_but_never_erases_earned_points(self):
+        game = MemoryGame(seed=9, pair_count=4)
+        pair = [i for i, card in enumerate(game.cards)
+                if card == game.cards[0]]
+        self.assertEqual(game.choose(pair[0]), "first")
+        self.assertEqual(game.choose(pair[1]), "match")
+        self.assertEqual(game.match_streak, 1)
+        old_score = game.score
+        old_best = game.best_streak
+        self.assertIsNotNone(game.peek_pair())
+        self.assertEqual(game.match_streak, 0)
+        self.assertEqual(game.best_streak, old_best)
+        self.assertEqual(game.score, old_score)
+        # Repeated hint while a hint is showing must not consume quota.
+        self.assertIsNone(game.peek_pair())
+        self.assertEqual(game.hints_used, 1)
+
     def test_hint_avoids_already_matched_pairs(self):
         game = MemoryGame(seed=42, pair_count=4)
         symbol = game.cards[0]
