@@ -79,6 +79,36 @@ class MemorySessionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             restore_session(forged, MemoryGame, SYMBOLS)
 
+    def test_v2_checksum_rejects_plausible_but_modified_checkpoint(self):
+        game = MemoryGame(seed=12, pair_count=4)
+        clean = snapshot_session(game, SYMBOLS)
+        self.assertEqual(clean["version"], 2)
+        self.assertEqual(len(clean["checksum"]), 8)
+        changed = dict(clean)
+        changed["moves"] = 10  # Still valid counters, but not the saved turn.
+        with self.assertRaises(ValueError):
+            restore_session(changed, MemoryGame, SYMBOLS)
+        changed = dict(clean)
+        changed["cards"] = list(reversed(clean["cards"]))
+        with self.assertRaises(ValueError):
+            restore_session(changed, MemoryGame, SYMBOLS)
+
+    def test_legacy_v1_checkpoint_is_restored_then_upgraded(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "round.json"
+            game = MemoryGame(seed=7, pair_count=4)
+            legacy = snapshot_session(game, SYMBOLS)
+            legacy["version"] = 1
+            legacy.pop("checksum")
+            path.write_text(json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+            restored = load_session(path, MemoryGame, SYMBOLS)
+            self.assertIsNotNone(restored)
+            self.assertEqual(restored.cards, game.cards)
+            save_session(path, restored, SYMBOLS)
+            updated = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(updated["version"], 2)
+            self.assertEqual(len(updated["checksum"]), 8)
+
     def test_special_modes_and_completed_rounds_never_save(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "round.json"
