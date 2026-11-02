@@ -120,7 +120,18 @@ def _read(path, symbols):
 def load_session(path: Path, game_class, symbols):
     for candidate in (path, path.with_suffix(".bak")):
         try:
-            return restore_session(_read(candidate, symbols), game_class, symbols)
+            clean = _read(candidate, symbols)
+            game = restore_session(clean, game_class, symbols)
+            if candidate != path:
+                # A valid backup should repair the damaged primary, not merely
+                # work once. Preserve the backup itself; interrupted recovery
+                # must still leave at least one readable checkpoint.
+                try:
+                    raw = json.dumps(clean, ensure_ascii=False).encode("utf-8")
+                    _atomic_session_write(path, raw)
+                except OSError:
+                    pass  # Resume from backup even on a read-only disk.
+            return game
         except (OSError, ValueError, TypeError, UnicodeError):
             continue
     return None
