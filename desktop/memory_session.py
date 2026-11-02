@@ -9,15 +9,30 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import zlib
 from collections import Counter
 from pathlib import Path
 
 MAX_BYTES = 8192
 
 
+def _checksum(data: dict) -> str:
+    """Detect accidental checkpoint corruption; CRC32 is not authentication."""
+    payload = {key: value for key, value in data.items() if key != "checksum"}
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                     separators=(",", ":")).encode("utf-8")
+    return f"{zlib.crc32(raw) & 0xffffffff:08x}"
+
+
 def validate_session(data, symbols):
-    if not isinstance(data, dict) or data.get("version") != 1:
+    if not isinstance(data, dict) or data.get("version") not in (1, 2):
         raise ValueError("Unsupported memory session")
+    if data["version"] == 2:
+        checksum = data.get("checksum")
+        if (not isinstance(checksum, str) or len(checksum) != 8 or
+                any(c not in "0123456789abcdef" for c in checksum) or
+                checksum != _checksum(data)):
+            raise ValueError("Memory session checksum mismatch")
     cards = data.get("cards")
     if not isinstance(cards, list) or len(cards) not in (4, 8, 12, 16):
         raise ValueError("Invalid board size")
@@ -50,23 +65,31 @@ def validate_session(data, symbols):
         raise ValueError("Invalid round counters")
     if len(matched) == len(cards):
         raise ValueError("Completed rounds are not resumed")
-    return {
-        "version": 1, "cards": list(cards), "matched": sorted(matched),
-        "moves": moves, "hints_used": hints, "match_streak": streak,
-        "best_streak": best, "score": score,
+    result = {
+        "version": data["version"], "cards": list(cards),
+        "matched": sorted(matched), "moves": moves, "hints_used": hints,
+        "match_streak": streak, "best_streak": best, "score": score,
     }
+    if data["version"] == 2:
+        result["checksum"] = checksum
+    return result
 
 
 def snapshot_session(game, symbols):
     if (game.perfect_mode or game.move_limit is not None or
             game.deadline is not None or game.failed):
         raise ValueError("Only unfinished ordinary rounds can be saved")
-    return validate_session({
+    # Validate all counters first, then persist v2 with a deterministic
+    # checksum. Old v1 checkpoints remain readable for existing players.
+    result = validate_session({
         "version": 1, "cards": list(game.cards),
         "matched": sorted(game.matched), "moves": game.moves,
         "hints_used": game.hints_used, "match_streak": game.match_streak,
         "best_streak": game.best_streak, "score": game.score,
     }, symbols)
+    result["version"] = 2
+    result["checksum"] = _checksum(result)
+    return validate_session(result, symbols)
 
 
 def restore_session(data, game_class, symbols):
