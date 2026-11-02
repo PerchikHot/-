@@ -49,6 +49,12 @@ internal object PuzzleBoard {
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
+    /** Once the prize is awarded, the solved board is frozen until New Puzzle.
+     * A stray tap must not reopen a checkpoint or alter the recorded win.
+     */
+    fun canAcceptMove(roundCompleted: Boolean, tile: Int, blank: Int): Boolean =
+        !roundCompleted && canMove(tile, blank)
+
     /** Revert exactly one legal slide; never accept an arbitrary old board.
      * UI keeps the move count as a penalty, so undo cannot farm records.
      */
