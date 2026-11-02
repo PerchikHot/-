@@ -634,7 +634,7 @@ class MainActivity : Activity() {
                                     .remove("round_v1").commit() else checkpoint()
                                 if(!saved) {
                                     cells.clear();cells.addAll(before);moves--
-                                    Toast.makeText(this,"Ход не сохранён",Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@MainActivity,"Ход не сохранён",Toast.LENGTH_SHORT).show()
                                     return@setOnClickListener
                                 }
                                 draw()
