@@ -7,18 +7,27 @@ import java.util.zip.CRC32
  * Corrupted or unsolvable checkpoints are ignored without changing rewards.
  */
 internal object PuzzleSession {
-    data class Round(val uri: String, val cells: List<Int>, val moves: Int, val hints: Int)
+    data class Round(val uri: String, val cells: List<Int>, val moves: Int,
+                     val hints: Int, val previous: List<Int>? = null)
 
     /** Never resume an old puzzle against a different or inaccessible photo. */
     fun canResume(round: Round?, imageReadable: Boolean): Boolean =
         round != null && imageReadable &&
             valid(round.uri, round.cells, round.moves, round.hints) &&
+            validUndo(round.cells, round.previous) &&
             round.cells != (0..8).toList()
 
-    fun encode(uri: String, cells: List<Int>, moves: Int, hints: Int): String? {
-        if (!valid(uri, cells, moves, hints) || cells == (0..8).toList()) return null
-        val payload = "$moves|$hints|${cells.joinToString(",")}|$uri"
-        return "v2|${checksum(payload)}|$payload"
+    /** v3 also stores one legal undo board, so Android process death does
+     * not silently disable the undo action. Moves remain a nonrefundable
+     * penalty; no photos or personal data are embedded in the checkpoint.
+     */
+    fun encode(uri: String, cells: List<Int>, moves: Int, hints: Int,
+               previous: List<Int>? = null): String? {
+        if (!valid(uri, cells, moves, hints) || cells == (0..8).toList() ||
+            !validUndo(cells, previous)) return null
+        val prior = previous?.joinToString(",") ?: "-"
+        val payload = "$moves|$hints|${cells.joinToString(",")}|$prior|$uri"
+        return "v3|${checksum(payload)}|$payload"
     }
 
     fun decode(raw: String?): Round? {
@@ -26,7 +35,7 @@ internal object PuzzleSession {
         val version = raw.substringBefore('|')
         val payload = when (version) {
             "v1" -> raw.removePrefix("v1|") // Legacy checkpoints remain readable.
-            "v2" -> {
+            "v2", "v3" -> {
                 val fields = raw.split('|', limit = 3)
                 if (fields.size != 3 || fields[1].length != 8 ||
                     fields[1].any { it !in "0123456789abcdef" } ||
@@ -35,14 +44,22 @@ internal object PuzzleSession {
             }
             else -> return null
         }
-        val fields = payload.split('|', limit = 4)
-        if (fields.size != 4) return null
+        val fields = payload.split('|', limit = if (version == "v3") 5 else 4)
+        if (fields.size != (if (version == "v3") 5 else 4)) return null
         val moves = fields[0].toIntOrNull() ?: return null
         val hints = fields[1].toIntOrNull() ?: return null
         val cells = fields[2].split(',').map { it.toIntOrNull() ?: return null }
-        if (!valid(fields[3], cells, moves, hints) || cells == (0..8).toList()) return null
-        return Round(fields[3], cells, moves, hints)
+        val previous = if (version == "v3" && fields[3] != "-")
+            fields[3].split(',').map { it.toIntOrNull() ?: return null }
+            else null
+        val uri = fields.last()
+        if (!valid(uri, cells, moves, hints) || cells == (0..8).toList() ||
+            !validUndo(cells, previous)) return null
+        return Round(uri, cells, moves, hints, previous)
     }
+
+    private fun validUndo(cells: List<Int>, previous: List<Int>?): Boolean =
+        previous == null || PuzzleBoard.undoLastMove(cells, previous) != null
 
     private fun checksum(payload: String): String {
         val crc = CRC32()
