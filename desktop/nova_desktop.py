@@ -263,6 +263,28 @@ def memory_key_to_index(key: str) -> int | None:
     return None
 
 
+def memory_grid_next_index(index: int, key: str, count: int, columns: int) -> int:
+    """Navigate a card grid without wrapping into another row by accident.
+
+    Arrow keys never flip a card; Enter activates the currently focused card.
+    This pure helper is shared by every Windows memory difficulty.
+    """
+    if (type(index) is not int or type(count) is not int or
+            type(columns) is not int or count < 1 or columns < 1 or
+            not 0 <= index < count):
+        raise ValueError("Invalid memory grid position")
+    row, column = divmod(index, columns)
+    if key == "Left" and column > 0:
+        return index - 1
+    if key == "Right" and column + 1 < columns and index + 1 < count:
+        return index + 1
+    if key == "Up" and row > 0:
+        return index - columns
+    if key == "Down" and index + columns < count:
+        return index + columns
+    return index
+
+
 def is_new_game_key(key: str) -> bool:
     """Restart only from the memory tab; ignore unrelated shortcuts."""
     return key.lower() == "n"
@@ -633,11 +655,15 @@ class NovaDesktop(tk.Tk):
                 width=7, height=3, font=("Segoe UI Symbol", 24),
                 bg=PANEL, fg=ACCENT, relief="flat",
                 activebackground="#54377E", activeforeground=TEXT,
+                highlightthickness=2, highlightcolor="#72d9ff",
+                highlightbackground=PANEL, takefocus=True,
             )
             columns = 2 if self.pair_count == 2 else 4
             button.grid(row=i // columns, column=i % columns, padx=6, pady=6)
             self.buttons.append(button)
         self._render_memory()
+        if self.buttons:
+            self.buttons[0].focus_set()
 
     def _copy_daily_challenge_code(self):
         """Share the same daily card layout without exposing local pictures."""
@@ -839,6 +865,20 @@ class NovaDesktop(tk.Tk):
             return self._jump_gallery(action == "first_image")
         if self.current_page != "memory":
             return
+        # Arrow navigation is available when a memory card has keyboard
+        # focus. Other buttons retain their normal keyboard shortcuts.
+        focused = getattr(event, "widget", None)
+        if focused in self.buttons:
+            current = self.buttons.index(focused)
+            if event.keysym in ("Left", "Right", "Up", "Down"):
+                columns = 2 if self.pair_count == 2 else 4
+                next_index = memory_grid_next_index(
+                    current, event.keysym, len(self.buttons), columns)
+                self.buttons[next_index].focus_set()
+                return "break"
+            if event.keysym in ("Return", "KP_Enter"):
+                self._flip(current)
+                return "break"
         if event.keysym.lower() == "h":
             self._memory_hint()
             return

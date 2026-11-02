@@ -5,9 +5,31 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from nova_desktop import memory_completion_percent, SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
+from nova_desktop import memory_completion_percent, SYMBOLS, next_slideshow_delay_ms, MemoryGame, random_candidate_indices, unseen_candidate_indices, memory_key_to_index, memory_grid_next_index, is_new_game_key, is_oversized_image, is_safe_gallery_preview, gallery_matches_query, collect_gallery_images, natural_gallery_key
 
 
+
+
+class MemoryKeyboardNavigationTests(unittest.TestCase):
+    def test_arrow_keys_move_focus_without_flipping_or_row_wrap(self):
+        # 4x4 board; movement clamps at edges and never crosses a row
+        # horizontally. All other keys leave the selection untouched.
+        self.assertEqual(memory_grid_next_index(0, "Right", 16, 4), 1)
+        self.assertEqual(memory_grid_next_index(3, "Right", 16, 4), 3)
+        self.assertEqual(memory_grid_next_index(4, "Left", 16, 4), 4)
+        self.assertEqual(memory_grid_next_index(5, "Up", 16, 4), 1)
+        self.assertEqual(memory_grid_next_index(5, "Down", 16, 4), 9)
+        self.assertEqual(memory_grid_next_index(15, "Down", 16, 4), 15)
+        self.assertEqual(memory_grid_next_index(7, "Enter", 16, 4), 7)
+        # Two-column easy mode uses the same rules.
+        self.assertEqual(memory_grid_next_index(1, "Down", 4, 2), 3)
+        self.assertEqual(memory_grid_next_index(2, "Left", 4, 2), 2)
+
+    def test_invalid_grid_state_is_not_used_as_button_index(self):
+        for index, count, columns in [(-1, 16, 4), (16, 16, 4),
+                                      (0, 0, 4), (0, 4, 0), (True, 4, 2)]:
+            with self.assertRaises(ValueError):
+                memory_grid_next_index(index, "Right", count, columns)
 
 
 class MemoryProgressTests(unittest.TestCase):
