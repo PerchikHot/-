@@ -70,6 +70,10 @@ def record_memory_win(stats: dict, moves: int, pairs: int = 8) -> dict:
     """Return updated stats for the selected completed board size."""
     if type(moves) is not int or not pairs <= moves <= 100_000:
         raise ValueError("Invalid completed-game move count")
+    # A damaged in-memory record must never be turned into a valid-looking
+    # win or silently overwrite the player's last good on-disk backup.
+    if not _valid_record(stats) or "wins" not in stats:
+        raise ValueError("Invalid existing memory-game record")
     wins = stats["wins"]
     best = stats["best_moves"]
     return {

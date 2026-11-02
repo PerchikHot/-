@@ -123,6 +123,20 @@ class MemoryRecordTests(unittest.TestCase):
                 save_memory_stats(target, {"wins": True, "best_moves": 8})
             self.assertFalse(target.exists())
 
+    def test_invalid_existing_records_cannot_be_promoted_to_wins(self):
+        for bad in (
+            {"wins": True, "best_moves": 8},
+            {"wins": -1, "best_moves": 8},
+            {"wins": 0, "best_moves": 8},
+            {"wins": 1, "best_moves": 1},
+            {"best_score": 500},
+            {},
+        ):
+            with self.subTest(record=bad), self.assertRaises(ValueError):
+                record_memory_win(bad, 10)
+        self.assertEqual(record_memory_win({"wins": 0, "best_moves": None}, 10),
+                         {"wins": 1, "best_moves": 10})
+
     def test_invalid_moves_do_not_change_records(self):
         stats = {"wins": 1, "best_moves": 11}
         for moves in (0, 7, -1, 100001, True):
