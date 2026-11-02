@@ -5,8 +5,17 @@ package com.perchikhot.novagame
  * Saving such URIs creates permanently broken gallery tiles on next launch.
  */
 internal object GalleryImportPolicy {
-    fun shouldSave(uri: String, persistedReadGrant: Boolean): Boolean =
-        persistedReadGrant && uri.startsWith("content://") &&
-            uri.length in 11..2048 &&
-            uri.none { it == '\n' || it == '\r' || it == '\u0000' }
+    fun shouldSave(uri: String, persistedReadGrant: Boolean): Boolean {
+        if (!persistedReadGrant || uri.length !in 11..2048 ||
+            !uri.startsWith("content://") ||
+            uri.any { it.isISOControl() || it.isWhitespace() }) return false
+        // A bare content:// URI or a forged authority is not a document.
+        // Persisted grants are scoped to a provider; never save credentials,
+        // ports or query/fragment variants that cannot be reopened reliably.
+        val authority = uri.removePrefix("content://").substringBefore('/')
+            .substringBefore('?').substringBefore('#')
+        if (!Regex("[A-Za-z0-9_][A-Za-z0-9_.-]*").matches(authority) ||
+            '?' in uri || '#' in uri || '@' in uri) return false
+        return true
+    }
 }
