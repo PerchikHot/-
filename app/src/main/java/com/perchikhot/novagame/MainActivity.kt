@@ -543,8 +543,11 @@ class MainActivity : Activity() {
             val uri=if(oldBitmap!=null) oldUri else fallbackUri
             val bitmap=oldBitmap ?: fallbackBitmap
             val resumed=PuzzleSession.canResume(restored,oldBitmap!=null)
-            val backupOk=if(restored!=null && !resumed && bitmap!=null) {
-                checkpointPrefs.edit().putString("unavailable_round_backup_v1",
+            val backupOk=if(savedCheckpoint!=null && !resumed && bitmap!=null) {
+                // Preserve even malformed legacy saves; never overwrite an
+                // earlier recovery copy with a second inaccessible round.
+                if(checkpointPrefs.contains("unavailable_round_backup_v1")) false
+                else checkpointPrefs.edit().putString("unavailable_round_backup_v1",
                     savedCheckpoint).commit()
             } else true
             runOnUiThread {
@@ -662,7 +665,7 @@ class MainActivity : Activity() {
                     puzzle()
                 }
                 if(resumed) label("Продолжена сохранённая партия • $moves ходов",14)
-                else if(restored!=null) label("Фото старой партии недоступно. Прогресс сохранён в резервной копии.",14)
+                else if(savedCheckpoint!=null) label("Старое сохранение недоступно. Исходные данные сохранены в резервной копии.",14)
                 val preview=ImageView(this).apply {setImageBitmap(square);scaleType=ImageView.ScaleType.FIT_CENTER}
                 label("Образец",16)
                 root.addView(preview,LinearLayout.LayoutParams(-1,dp(150)))
