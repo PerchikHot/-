@@ -45,6 +45,16 @@ internal object PuzzleBoard {
         }
     }
 
+    /** Honest, cheap progress hint for the puzzle HUD.
+     * Manhattan distance is a lower bound, not an exact solution length.
+     * Never claim that the puzzle is solvable in exactly this many moves.
+     */
+    fun remainingMovesLabel(cells: List<Int>): String {
+        val lowerBound = manhattanDistance(cells)
+        return if (lowerBound == 0) "Пазл собран"
+            else "До решения: не менее $lowerBound ходов"
+    }
+
     /** Return a legal first move on a solved path, not just the lowest
      * Manhattan neighbor. A bounded IDA* search fixes local minima where
      * a greedy hint repeatedly sends the player backwards. Never mutates
