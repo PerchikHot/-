@@ -56,6 +56,14 @@ class DailyLayoutTests(unittest.TestCase):
                 daily_positions("2026-10-31", pairs)
         with self.assertRaises(ValueError):
             daily_positions("2026-02-30", 4)
+        # Python accepts compact/week dates; Android does not. Both clients
+        # must generate exactly the same daily board from a share code.
+        for bad in ("20261102", "2026-W45-1", "2026-11-2",
+                    " 2026-11-02", "2026-11-02 ", None, 20261102):
+            with self.subTest(day=bad), self.assertRaises(ValueError):
+                daily_positions(bad, 4)
+            with self.subTest(day=bad), self.assertRaises(ValueError):
+                daily_challenge_code(bad, 4)
 
 
 if __name__ == "__main__":
