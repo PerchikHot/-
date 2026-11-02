@@ -10,13 +10,44 @@ class PuzzleSessionTest {
     @Test fun restoresUnfinishedBoardWithoutChangingScore() {
         val raw = PuzzleSession.encode(uri,board,42,3)
         assertNotNull(raw)
-        assertTrue(raw!!.startsWith("v2|"))
+        assertTrue(raw!!.startsWith("v3|"))
         val restored = PuzzleSession.decode(raw)
         assertEquals(board, restored?.cells)
         assertEquals(42, restored?.moves)
         assertEquals(3, restored?.hints)
         assertEquals(uri, restored?.uri)
         assertNull(PuzzleSession.encode(uri,(0..8).toList(),42,3))
+    }
+
+    @Test fun savedUndoSurvivesProcessDeathAndCannotBeReplayed() {
+        val before = board
+        val after = listOf(0,1,2,3,4,5,8,6,7)
+        val raw = PuzzleSession.encode(uri, after, 43, 3, before)
+        assertNotNull(raw)
+        val resumed = PuzzleSession.decode(raw)
+        assertEquals(after, resumed?.cells)
+        assertEquals(before, resumed?.previous)
+        assertTrue(PuzzleSession.canResume(resumed, true))
+        assertEquals(before, PuzzleBoard.undoLastMove(resumed!!.cells, resumed.previous!!))
+        // Undo consumes the saved previous board; moves are NOT refunded.
+        val consumed = PuzzleSession.decode(PuzzleSession.encode(uri, before, 43, 3))
+        assertEquals(43, consumed?.moves)
+        assertNull(consumed?.previous)
+        // A forged or unrelated undo state is rejected before disk write.
+        assertNull(PuzzleSession.encode(uri, after, 43, 3, (0..8).toList()))
+        assertFalse(PuzzleSession.canResume(
+            PuzzleSession.Round(uri, after, 43, 3, (0..8).toList()), true))
+    }
+
+    @Test fun oldV2CheckpointsRemainReadableAfterV3Upgrade() {
+        val payload = "42|3|0,1,2,3,4,5,6,8,7|$uri"
+        val crc = java.util.zip.CRC32()
+        crc.update(payload.toByteArray(Charsets.UTF_8))
+        val old = "v2|" + crc.value.toString(16).padStart(8, '0') + "|" + payload
+        val recovered = PuzzleSession.decode(old)
+        assertEquals(board, recovered?.cells)
+        assertNull(recovered?.previous)
+        assertEquals(42, recovered?.moves)
     }
 
     @Test fun refusesToResumeWhenSavedPhotoIsNoLongerReadable() {
