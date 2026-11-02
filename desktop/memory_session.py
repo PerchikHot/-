@@ -26,9 +26,9 @@ def _checksum(data: dict) -> str:
 
 def validate_session(data, symbols):
     if (not isinstance(data, dict) or type(data.get("version")) is not int
-            or data["version"] not in (1, 2)):
+            or data["version"] not in (1, 2, 3)):
         raise ValueError("Unsupported memory session")
-    if data["version"] == 2:
+    if data["version"] in (2, 3):
         checksum = data.get("checksum")
         if (not isinstance(checksum, str) or len(checksum) != 8 or
                 any(c not in "0123456789abcdef" for c in checksum) or
@@ -67,6 +67,22 @@ def validate_session(data, symbols):
             streak > len(matched) // 2 or best > len(matched) // 2 or
             type(score) is not int or not 0 <= score <= 10000000):
         raise ValueError("Invalid round counters")
+    if data["version"] == 3:
+        # Persist the actual revealed pairs. Without this, a saved round
+        # forgets the first hint and may waste the final hint on that pair.
+        hinted = data.get("hinted_pairs")
+        if not isinstance(hinted, list) or len(hinted) > 2:
+            raise ValueError("Invalid hint history")
+        normalized = []
+        for pair in hinted:
+            if (not isinstance(pair, list) or len(pair) != 2 or
+                    any(type(index) is not int or index not in range(len(cards))
+                        for index in pair) or pair[0] >= pair[1] or
+                    cards[pair[0]] != cards[pair[1]]):
+                raise ValueError("Invalid hinted pair")
+            normalized.append(tuple(pair))
+        if len(set(normalized)) != len(normalized) or len(normalized) > hints:
+            raise ValueError("Inconsistent hint history")
     if len(matched) == len(cards):
         raise ValueError("Completed rounds are not resumed")
     result = {
@@ -74,7 +90,9 @@ def validate_session(data, symbols):
         "matched": sorted(matched), "moves": moves, "hints_used": hints,
         "match_streak": streak, "best_streak": best, "score": score,
     }
-    if data["version"] == 2:
+    if data["version"] == 3:
+        result["hinted_pairs"] = [list(pair) for pair in normalized]
+    if data["version"] in (2, 3):
         result["checksum"] = checksum
     return result
 
@@ -91,7 +109,8 @@ def snapshot_session(game, symbols):
         "hints_used": game.hints_used, "match_streak": game.match_streak,
         "best_streak": game.best_streak, "score": game.score,
     }, symbols)
-    result["version"] = 2
+    result["version"] = 3
+    result["hinted_pairs"] = [list(pair) for pair in sorted(game._hinted_pairs)]
     result["checksum"] = _checksum(result)
     return validate_session(result, symbols)
 
@@ -103,6 +122,7 @@ def restore_session(data, game_class, symbols):
     game.matched = set(clean["matched"])
     game.moves = clean["moves"]
     game.hints_used = clean["hints_used"]
+    game._hinted_pairs = {tuple(pair) for pair in clean.get("hinted_pairs", [])}
     game.match_streak = clean["match_streak"]
     game.best_streak = clean["best_streak"]
     game.score = clean["score"]

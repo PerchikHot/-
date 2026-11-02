@@ -112,10 +112,10 @@ class MemorySessionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             restore_session(checkpoint, MemoryGame, SYMBOLS)
 
-    def test_v2_checksum_rejects_plausible_but_modified_checkpoint(self):
+    def test_checkpoint_checksum_rejects_plausible_but_modified_checkpoint(self):
         game = MemoryGame(seed=12, pair_count=4)
         clean = snapshot_session(game, SYMBOLS)
-        self.assertEqual(clean["version"], 2)
+        self.assertEqual(clean["version"], 3)
         self.assertEqual(len(clean["checksum"]), 8)
         changed = dict(clean)
         changed["moves"] = 10  # Still valid counters, but not the saved turn.
@@ -139,8 +139,46 @@ class MemorySessionTests(unittest.TestCase):
             self.assertEqual(restored.cards, game.cards)
             save_session(path, restored, SYMBOLS)
             updated = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(updated["version"], 2)
+            self.assertEqual(updated["version"], 3)
             self.assertEqual(len(updated["checksum"]), 8)
+
+    def test_hint_history_survives_restart_and_avoids_repeating_pair(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "round.json"
+            game = MemoryGame(seed=123, pair_count=8)
+            first = game.peek_pair()
+            self.assertIsNotNone(first)
+            game.hide_hint()
+            save_session(path, game, SYMBOLS)
+            restored = load_session(path, MemoryGame, SYMBOLS)
+            self.assertEqual(restored.hints_used, 1)
+            self.assertEqual(restored._hinted_pairs, {first})
+            second = restored.peek_pair()
+            self.assertIsNotNone(second)
+            self.assertNotEqual(second, first)
+            self.assertEqual(restored.hints_used, 2)
+
+    def test_checkpoint_rejects_forged_hint_history(self):
+        game = MemoryGame(seed=9, pair_count=4)
+        game.peek_pair()
+        clean = snapshot_session(game, SYMBOLS)
+        self.assertEqual(clean["version"], 3)
+        bad = dict(clean)
+        bad["hinted_pairs"] = [[0, 0]]
+        # Even with a valid checksum, malformed pairs are not accepted.
+        from memory_session import _checksum
+        bad["checksum"] = _checksum(bad)
+        with self.assertRaises(ValueError):
+            restore_session(bad, MemoryGame, SYMBOLS)
+
+    def test_legacy_v2_checkpoint_remains_readable(self):
+        game = MemoryGame(seed=17, pair_count=4)
+        clean = snapshot_session(game, SYMBOLS)
+        clean.pop("hinted_pairs")
+        clean["version"] = 2
+        from memory_session import _checksum
+        clean["checksum"] = _checksum(clean)
+        self.assertEqual(restore_session(clean, MemoryGame, SYMBOLS).cards, game.cards)
 
     def test_boolean_checkpoint_version_cannot_masquerade_as_v1(self):
         game = MemoryGame(seed=3, pair_count=2)
