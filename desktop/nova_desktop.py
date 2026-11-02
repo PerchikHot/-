@@ -306,6 +306,10 @@ class MemoryGame:
         if self.failed or len(self.matched) != len(self.cards):
             return 0
         pairs = len(self.cards) // 2
+        # A revealed pair gives an advantage. Show a practice star rather
+        # than a misleading perfect rating; record eligibility is unchanged.
+        if self.hints_used:
+            return 1
         if self.moves == pairs:
             return 3
         if self.moves <= pairs * 2:
@@ -362,7 +366,7 @@ class MemoryGame:
         Hints are never counted as record-eligible wins. A pending mismatch
         cannot be bypassed by requesting a hint.
         """
-        if self.perfect_mode or self.move_limit is not None or self.deadline is not None or self.expire_if_needed() or self.failed or self.hints_used >= 2 or self.flipped or self.hint_indices:
+        if self.perfect_mode or self.move_limit is not None or self.deadline is not None or self.expire_if_needed() or self._paused_at is not None or self.failed or self.hints_used >= 2 or self.flipped or self.hint_indices:
             return None
         for index, symbol in enumerate(self.cards):
             if index in self.matched:

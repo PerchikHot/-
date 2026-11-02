@@ -80,6 +80,18 @@ class MemoryStarRatingTests(unittest.TestCase):
         game.failed = True
         self.assertEqual(game.completion_stars(), 0)
 
+    def test_hint_assisted_win_shows_practice_rating_not_perfect_stars(self):
+        game = MemoryGame(seed=5, pair_count=2)
+        self.assertIsNotNone(game.peek_pair())
+        game.hide_hint()
+        for symbol in SYMBOLS[:2]:
+            a, b = [i for i, card in enumerate(game.cards) if card == symbol]
+            game.choose(a)
+            outcome = game.choose(b)
+        self.assertEqual(outcome, "win")
+        self.assertEqual(game.moves, 2)
+        self.assertEqual(game.completion_stars(), 1)
+
 class MemoryTimeTrialTests(unittest.TestCase):
     def test_countdown_expires_without_awarding_a_win(self):
         now = [100.0]
@@ -199,6 +211,14 @@ class MemoryHintTests(unittest.TestCase):
         game.hide_hint()
         self.assertIsNone(game.peek_pair())
         self.assertEqual(game.hints_used, 2)
+
+    def test_paused_game_cannot_reveal_hint_or_consume_quota(self):
+        game = MemoryGame(seed=9)
+        game._paused_at = 100.0
+        self.assertIsNone(game.peek_pair())
+        self.assertEqual(game.hints_used, 0)
+        game._paused_at = None
+        self.assertIsNotNone(game.peek_pair())
 
     def test_hint_cannot_bypass_pending_mismatch_or_completed_game(self):
         game = MemoryGame(seed=9)

@@ -11,6 +11,13 @@ class MemoryRatingTest {
         assertEquals(1, MemoryRating.stars(6, 13, true))
     }
 
+    @Test fun hintAssistedWinsReceiveOnlyOnePracticeStar() {
+        assertEquals(3, MemoryRating.stars(4, 4, true, 0))
+        assertEquals(1, MemoryRating.stars(4, 4, true, 1))
+        assertEquals(1, MemoryRating.stars(4, 7, true, 2))
+        assertEquals(0, MemoryRating.stars(4, 4, false, 1))
+    }
+
     @Test fun failedAndInvalidRoundsNeverReceiveStars() {
         assertEquals(0, MemoryRating.stars(6, 6, false))
         assertEquals(0, MemoryRating.stars(6, 5, true))

@@ -9,8 +9,10 @@ internal object MemoryRating {
         return ((pairs.toLong() * 100 + moves / 2) / moves).coerceIn(0, 100).toInt()
     }
 
-    fun stars(pairs: Int, moves: Int, won: Boolean): Int {
+    fun stars(pairs: Int, moves: Int, won: Boolean, hintsUsed: Int = 0): Int {
         if (!won || pairs <= 0 || moves < pairs) return 0
+        // Hint-assisted completions remain practice results, never 3-star wins.
+        if (hintsUsed > 0) return 1
         return when {
             moves == pairs -> 3
             moves <= pairs * 2 -> 2

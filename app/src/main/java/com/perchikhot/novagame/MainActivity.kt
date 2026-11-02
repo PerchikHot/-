@@ -447,7 +447,7 @@ class MainActivity : Activity() {
                             }
                             // Same efficiency rating as the Windows memory game.
                             // This is informational and never modifies records.
-                            val stars = "★".repeat(MemoryRating.stars(chosen.size, moves, true))
+                            val stars = "★".repeat(MemoryRating.stars(chosen.size, moves, true, hintsUsed))
                             label("Оценка: $stars • $moves ходов • Точность: ${MemoryRating.accuracy(chosen.size, moves, true)}%" +
                                 (if(eligibleRecord) " • Лучший счёт: ${records.getInt(bestPointsKey,0)}" else ""))
                             label(if(reward>0) "Все пары найдены! Счёт раунда: $roundPoints • +$reward монет"
