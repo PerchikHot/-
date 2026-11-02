@@ -593,6 +593,7 @@ class MainActivity : Activity() {
                 var moves=if(resumed) restored?.moves ?: 0 else 0
                 var hintsUsed=if(resumed) restored?.hints ?: 0 else 0
                 var rewarded=false
+                var lastMoveBefore: List<Int>? = null
                 // A move or hint is not accepted until its checkpoint is
                 // durable. Otherwise a process kill silently loses progress.
                 fun checkpoint(): Boolean {
@@ -654,6 +655,7 @@ class MainActivity : Activity() {
                                     Toast.makeText(this@MainActivity,"Ход не сохранён",Toast.LENGTH_SHORT).show()
                                     return@setOnClickListener
                                 }
+                                lastMoveBefore = if(solved) null else before
                                 draw()
                                 progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
                                 if(!rewarded && solved) {
@@ -678,6 +680,29 @@ class MainActivity : Activity() {
                     views.add(view)
                 }
                 draw()
+                add("↶ ОТМЕНИТЬ ПОСЛЕДНИЙ ХОД (без возврата ходов)") {
+                    val previous = lastMoveBefore
+                    if (rewarded || previous == null) {
+                        Toast.makeText(this,"Нет хода для отмены",Toast.LENGTH_SHORT).show()
+                    } else {
+                        val restoredBoard = PuzzleBoard.undoLastMove(cells, previous)
+                        if (restoredBoard == null) {
+                            lastMoveBefore = null
+                        } else {
+                            val current = cells.toList()
+                            cells.clear();cells.addAll(restoredBoard)
+                            // Persist BEFORE redrawing. A failed disk write
+                            // must not show a board different from the save.
+                            if (checkpoint()) {
+                                lastMoveBefore = null
+                                draw()
+                                progressLabel.text="Ходы: $moves • Рекорд: ${records.getInt("best_moves_3x3",0).takeIf {it>0} ?: "—"}\n${PuzzleBoard.remainingMovesLabel(cells)}"
+                            } else {
+                                cells.clear();cells.addAll(current)
+                            }
+                        }
+                    }
+                }
                 add("✧ ПОДСКАЗКА (совет, не автопрохождение)") {
                     if(!rewarded) {
                         val suggestion=PuzzleBoard.suggestMove(cells)
