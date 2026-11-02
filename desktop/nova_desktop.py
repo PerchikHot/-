@@ -406,6 +406,9 @@ class MemoryGame:
         # selection while preserving the two-hint quota and save format.
         chosen = self._rng.choice(available)
         self.hints_used += 1
+        # A revealed pair is assistance: break the live combo before the
+        # next match, but preserve earned points and the best streak HUD.
+        self.match_streak = 0
         self.hint_indices = set(chosen)
         return chosen
 
