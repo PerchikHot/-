@@ -5,6 +5,16 @@ import org.junit.Test
 import kotlin.random.Random
 
 class PuzzleBoardTest {
+    @org.junit.Test fun undoRevertsOnlyOneLegalMoveWithoutChangingSource() {
+        val before = listOf(0,1,2,3,4,5,6,8,7)
+        val after = listOf(0,1,2,3,4,5,6,7,8)
+        assertEquals(before, PuzzleBoard.undoLastMove(after, before))
+        assertEquals(after, listOf(0,1,2,3,4,5,6,7,8))
+        assertNull(PuzzleBoard.undoLastMove(before, before))
+        assertNull(PuzzleBoard.undoLastMove(listOf(1,0,2,3,4,5,6,8,7), before))
+        assertNull(PuzzleBoard.undoLastMove(after, listOf(0,1,2,3,4,5,8,6,7)))
+    }
+
     @Test fun cornerAndEdgeNeighborsAreLegal() {
         assertEquals(listOf(3, 1), PuzzleBoard.neighbors(0))
         assertEquals(listOf(5, 7), PuzzleBoard.neighbors(8))
