@@ -49,6 +49,24 @@ internal object PuzzleBoard {
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
+    /** Explain the suggested legal move, not merely flash a tile.
+     * Accessible direction text works when highlighting is hard to see.
+     * This never moves a tile or changes hints/score by itself.
+     */
+    fun hintInstruction(cells: List<Int>, tile: Int): String {
+        require(cells.size == 9 && cells.sorted() == solved) { "Invalid board" }
+        val blank = cells.indexOf(8)
+        require(canMove(tile, blank)) { "Hint must be adjacent to blank" }
+        val direction = when (tile - blank) {
+            -3 -> "вниз"
+            3 -> "вверх"
+            -1 -> "вправо"
+            1 -> "влево"
+            else -> error("Invalid adjacent tile")
+        }
+        return "Передвинь подсвеченную плитку $direction. Рекорд без подсказок."
+    }
+
     /** Manhattan distance from the solved board, ignoring the blank tile.
      * Used to avoid offering trivial one-move puzzles after a long shuffle.
      */
