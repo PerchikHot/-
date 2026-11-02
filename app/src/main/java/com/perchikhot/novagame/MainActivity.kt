@@ -349,7 +349,7 @@ class MainActivity : Activity() {
         // small Android screens; the bar never reveals hidden photo cards.
         val pairProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
             max=chosen.size
-            progress=0
+            setProgress(0)
             progressTintList=android.content.res.ColorStateList.valueOf(Color.rgb(159,117,255))
             progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(40,40,78))
             contentDescription="Найдено пар: 0 из ${chosen.size}"
