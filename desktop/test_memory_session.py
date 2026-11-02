@@ -142,6 +142,14 @@ class MemorySessionTests(unittest.TestCase):
             self.assertEqual(updated["version"], 2)
             self.assertEqual(len(updated["checksum"]), 8)
 
+    def test_boolean_checkpoint_version_cannot_masquerade_as_v1(self):
+        game = MemoryGame(seed=3, pair_count=2)
+        checkpoint = snapshot_session(game, SYMBOLS)
+        checkpoint["version"] = True
+        checkpoint.pop("checksum")
+        with self.assertRaises(ValueError):
+            restore_session(checkpoint, MemoryGame, SYMBOLS)
+
     def test_special_modes_and_completed_rounds_never_save(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "round.json"
