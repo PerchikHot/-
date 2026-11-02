@@ -51,8 +51,14 @@ internal object PuzzleBoard {
      */
     fun remainingMovesLabel(cells: List<Int>): String {
         val lowerBound = manhattanDistance(cells)
-        return if (lowerBound == 0) "Пазл собран"
-            else "До решения: не менее $lowerBound ходов"
+        if (lowerBound == 0) return "Пазл собран"
+        val word = when {
+            lowerBound % 100 in 11..14 -> "ходов"
+            lowerBound % 10 == 1 -> "ход"
+            lowerBound % 10 in 2..4 -> "хода"
+            else -> "ходов"
+        }
+        return "До решения: не менее $lowerBound $word"
     }
 
     /** Return a legal first move on a solved path, not just the lowest
