@@ -345,6 +345,18 @@ class MainActivity : Activity() {
             gravity=Gravity.CENTER
         }
         root.addView(progress)
+        // A real, accessible progress bar complements the text HUD on
+        // small Android screens; the bar never reveals hidden photo cards.
+        val pairProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=chosen.size
+            progress=0
+            progressTintList=android.content.res.ColorStateList.valueOf(Color.rgb(159,117,255))
+            progressBackgroundTintList=android.content.res.ColorStateList.valueOf(Color.rgb(40,40,78))
+            contentDescription="Найдено пар: 0 из ${chosen.size}"
+        }
+        root.addView(pairProgress,LinearLayout.LayoutParams(-1,dp(10)).apply {
+            setMargins(dp(6),dp(4),dp(6),dp(12))
+        })
         val countdown=TextView(this).apply {
             text=if(timeTrial) "Осталось: 90 с" else ""
             textSize=16f
@@ -380,10 +392,12 @@ class MainActivity : Activity() {
         lateinit var buttons:List<Button>
         fun show(i:Int) {
             buttons[i].text=""
+            buttons[i].contentDescription="Открытая карточка ${i+1}"
             buttons[i].background=android.graphics.drawable.BitmapDrawable(resources,thumbs[values[i]])
         }
         fun hide(i:Int) {
             buttons[i].text="✧"
+            buttons[i].contentDescription="Закрытая карточка ${i+1}"
             buttons[i].background=panel(0xD032285B.toInt(),14)
         }
         buttons=grid(3,values.size) {i,_ ->
@@ -396,6 +410,9 @@ class MainActivity : Activity() {
                     moves++
                     if(values[prev]==values[i]) {
                         opened.add(prev);opened.add(i)
+                        pairProgress.progress=opened.size/2
+                        pairProgress.contentDescription=
+                            "Найдено пар: ${opened.size/2} из ${chosen.size}"
                         streak++
                         bestStreak=maxOf(bestStreak,streak)
                         // Same combo score as the Windows preview. It is a
