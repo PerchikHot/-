@@ -311,7 +311,8 @@ class MemoryGame:
         self.deadline = (self._clock() + time_limit_seconds
                          if time_limit_seconds is not None else None)
         self.cards = list(SYMBOLS[:pair_count]) * 2
-        random.Random(seed).shuffle(self.cards)
+        self._rng = random.Random(seed)
+        self._rng.shuffle(self.cards)
         self.matched: set[int] = set()
         self.flipped: list[int] = []
         self.moves = 0
@@ -390,16 +391,23 @@ class MemoryGame:
         """
         if self.perfect_mode or self.move_limit is not None or self.deadline is not None or self.expire_if_needed() or self._paused_at is not None or self.failed or self.hints_used >= 2 or self.flipped or self.hint_indices:
             return None
+        available = []
         for index, symbol in enumerate(self.cards):
             if index in self.matched:
                 continue
             partner = next((j for j in range(index + 1, len(self.cards))
                             if j not in self.matched and self.cards[j] == symbol), None)
             if partner is not None:
-                self.hints_used += 1
-                self.hint_indices = {index, partner}
-                return index, partner
-        return None
+                available.append((index, partner))
+        if not available:
+            return None
+        # Previously hints always exposed the first unmatched symbol, making
+        # repeated games predictable. Use the round RNG for fair, seeded
+        # selection while preserving the two-hint quota and save format.
+        chosen = self._rng.choice(available)
+        self.hints_used += 1
+        self.hint_indices = set(chosen)
+        return chosen
 
     def hide_hint(self) -> None:
         self.hint_indices.clear()
@@ -407,7 +415,7 @@ class MemoryGame:
     def choose(self, index: int) -> str:
         if self.expire_if_needed():
             return 'lost'
-        if self.failed or self._paused_at is not None or self.hint_indices or index not in range(len(self.cards)) or index in self.matched:
+        if self.failed or self._paused_at is not None or self.hint_indices or type(index) is not int or index not in range(len(self.cards)) or index in self.matched:
             return "ignored"
         if index in self.flipped or len(self.flipped) >= 2:
             return "ignored"
