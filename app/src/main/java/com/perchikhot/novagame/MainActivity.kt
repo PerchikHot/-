@@ -569,7 +569,10 @@ class MainActivity : Activity() {
                 }
                 // A legal walk always produces a solvable board and never
                 // crashes if the blank lands in the top-left corner.
-                val cells = (if(resumed) restored?.cells else null)?.toMutableList() ?: PuzzleBoard.scramble(90)
+                val options=getSharedPreferences("puzzle_options",MODE_PRIVATE)
+                var selectedDifficulty=options.getInt("difficulty",1).coerceIn(0,2)
+                val cells = (if(resumed) restored?.cells else null)?.toMutableList()
+                    ?: PuzzleBoard.scramble(PuzzleBoard.difficultySteps(selectedDifficulty))
                 var moves=if(resumed) restored?.moves ?: 0 else 0
                 var hintsUsed=if(resumed) restored?.hints ?: 0 else 0
                 var rewarded=false
@@ -660,9 +663,24 @@ class MainActivity : Activity() {
                         }
                     }
                 }
+                // Difficulty is saved locally and applies to the NEXT round.
+                // Changing it must never silently destroy a saved puzzle.
+                lateinit var difficultyButton: Button
+                difficultyButton=button(
+                    "✦ СЛОЖНОСТЬ СЛЕДУЮЩЕГО ПАЗЛА: ${PuzzleBoard.difficultyName(selectedDifficulty)}"
+                ) {
+                    val next=(selectedDifficulty+1)%3
+                    if(options.edit().putInt("difficulty",next).commit()) {
+                        selectedDifficulty=next
+                        difficultyButton.text="✦ СЛОЖНОСТЬ СЛЕДУЮЩЕГО ПАЗЛА: ${PuzzleBoard.difficultyName(next)}"
+                    } else {
+                        Toast.makeText(this,"Не удалось сохранить сложность",Toast.LENGTH_SHORT).show()
+                    }
+                }
+                root.addView(difficultyButton)
                 add("↻ НОВЫЙ ПАЗЛ (сброс текущего)") {
-                    checkpointPrefs.edit().remove("round_v1").commit()
-                    puzzle()
+                    if(checkpointPrefs.edit().remove("round_v1").commit()) puzzle()
+                    else Toast.makeText(this,"Не удалось сбросить пазл",Toast.LENGTH_SHORT).show()
                 }
                 if(resumed) label("Продолжена сохранённая партия • $moves ходов",14)
                 else if(savedCheckpoint!=null) label("Старое сохранение недоступно. Исходные данные сохранены в резервной копии.",14)

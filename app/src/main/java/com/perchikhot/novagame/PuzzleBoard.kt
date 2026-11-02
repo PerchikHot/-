@@ -29,6 +29,23 @@ internal object PuzzleBoard {
         return minOf(usableWidth, usableHeight, 420)
     }
 
+    /** Three persistent challenge levels. A saved round keeps its existing
+     * layout; switching difficulty affects only the next new puzzle.
+     */
+    fun difficultySteps(level: Int): Int = when (level) {
+        0 -> 24
+        1 -> 90
+        2 -> 180
+        else -> throw IllegalArgumentException("Invalid puzzle difficulty")
+    }
+
+    fun difficultyName(level: Int): String = when (level) {
+        0 -> "Лёгкая"
+        1 -> "Обычная"
+        2 -> "Сложная"
+        else -> throw IllegalArgumentException("Invalid puzzle difficulty")
+    }
+
     fun canMove(tile: Int, blank: Int): Boolean =
         tile in 0..8 && blank in 0..8 && tile in neighbors(blank)
 
@@ -144,7 +161,13 @@ internal object PuzzleBoard {
                 cells[next] = 8
                 previousBlank = blank
             }
-            if (cells != solved && (steps < 20 || manhattanDistance(cells) >= 8)) {
+            val minimum = when {
+                steps >= 120 -> 12
+                steps >= 60 -> 8
+                steps >= 20 -> 6
+                else -> 1
+            }
+            if (cells != solved && manhattanDistance(cells) >= minimum) {
                 return cells
             }
         }

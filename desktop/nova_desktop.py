@@ -697,9 +697,11 @@ class NovaDesktop(tk.Tk):
         if self.practice_replay:
             mode += " — тренировка (без рекордов)"
         hint_status = "Без подсказок" if self.perfect_mode or self.move_limit_mode or self.time_trial_mode else f"Подсказки: {2 - self.game.hints_used}/2"
-        self.progress["value"] = memory_completion_percent(
-            len(self.game.matched), self.pair_count)
-        self.status.config(text=f"{mode}  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
+        completion = memory_completion_percent(len(self.game.matched), self.pair_count)
+        self.progress["value"] = completion
+        # A numeric indicator is readable even when the Windows theme hides
+        # the progress-bar fill or the user cannot distinguish its color.
+        self.status.config(text=f"{mode}  •  Прогресс: {completion}%  •  Ходы: {self.game.moves}  •  Пары: {len(self.game.matched) // 2}/{self.pair_count}  •  Серия: {self.game.match_streak} (макс. {self.game.best_streak})  •  Очки: {self.game.score}  •  {hint_status}  •  Побед: {wins}  •  {record}")
         for i, button in enumerate(self.buttons):
             visible = i in self.game.flipped or i in self.game.matched or i in self.game.hint_indices
             button.config(

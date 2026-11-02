@@ -26,6 +26,26 @@ class PuzzleBoardTest {
         }
     }
 
+    @Test fun difficultyModesCreateSolvableNontrivialBoards() {
+        assertEquals(listOf(24, 90, 180), (0..2).map(PuzzleBoard::difficultySteps))
+        assertEquals(listOf("Лёгкая", "Обычная", "Сложная"),
+            (0..2).map(PuzzleBoard::difficultyName))
+        for (level in 0..2) {
+            val threshold = listOf(6, 8, 12)[level]
+            for (seed in 0 until 40) {
+                val cells = PuzzleBoard.scramble(
+                    PuzzleBoard.difficultySteps(level), Random(seed))
+                assertEquals((0..8).toList(), cells.sorted())
+                assertTrue("level $level seed $seed",
+                    PuzzleBoard.manhattanDistance(cells) >= threshold)
+            }
+        }
+        try {
+            PuzzleBoard.difficultySteps(3)
+            fail("Invalid difficulty accepted")
+        } catch (_: IllegalArgumentException) {}
+    }
+
     @Test fun puzzleDifficultyUsesActualTileDistances() {
         assertEquals(0, PuzzleBoard.manhattanDistance((0..8).toList()))
         assertEquals(12, PuzzleBoard.manhattanDistance(
