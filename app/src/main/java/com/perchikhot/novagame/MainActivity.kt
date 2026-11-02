@@ -504,13 +504,9 @@ class MainActivity : Activity() {
         lateinit var hintButton:Button
         hintButton=button("Подсказка: 2 осталось") {
             if(!perfection && !limited && !timeTrial && !completed && !locked && first<0 && hintsUsed<2) {
-                val remaining=values.indices.filter {it !in opened}
-                var pair:Pair<Int,Int>?=null
-                for(i in remaining) {
-                    val other=remaining.firstOrNull {it!=i && values[it]==values[i]}
-                    if(other!=null) {pair=i to other;break}
-                }
-                pair?.let {(a,b) ->
+                // Choose fairly among all remaining pairs rather than
+                // revealing the first symbol on every ordinary round.
+                MemoryHintSelector.choose(values,opened)?.let {(a,b) ->
                     hintsUsed++
                     locked=true
                     show(a);show(b)
