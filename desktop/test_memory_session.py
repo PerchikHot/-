@@ -41,6 +41,24 @@ class MemorySessionTests(unittest.TestCase):
             clear_session(path)
             self.assertIsNone(load_session(path, MemoryGame, SYMBOLS))
 
+    def test_backup_recovery_repairs_primary_for_subsequent_launches(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "round.json"
+            game = MemoryGame(seed=4, pair_count=2)
+            game.moves = 1
+            save_session(path, game, SYMBOLS)
+            game.moves = 2
+            save_session(path, game, SYMBOLS)
+            backup_before = path.with_suffix(".bak").read_bytes()
+            path.write_text("{broken", encoding="utf-8")
+            recovered = load_session(path, MemoryGame, SYMBOLS)
+            self.assertEqual(recovered.moves, 1)
+            self.assertEqual(path.with_suffix(".bak").read_bytes(), backup_before)
+            # The repaired primary now works without the backup.
+            path.with_suffix(".bak").unlink()
+            self.assertEqual(load_session(path, MemoryGame, SYMBOLS).moves, 1)
+            self.assertEqual(list(Path(folder).glob(".nova-session-*.tmp")), [])
+
     def test_failed_backup_replacement_keeps_primary_save_and_old_backup(self):
         from unittest.mock import patch
         import os
