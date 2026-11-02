@@ -25,7 +25,8 @@ def _checksum(data: dict) -> str:
 
 
 def validate_session(data, symbols):
-    if not isinstance(data, dict) or data.get("version") not in (1, 2):
+    if (not isinstance(data, dict) or type(data.get("version")) is not int
+            or data["version"] not in (1, 2)):
         raise ValueError("Unsupported memory session")
     if data["version"] == 2:
         checksum = data.get("checksum")
