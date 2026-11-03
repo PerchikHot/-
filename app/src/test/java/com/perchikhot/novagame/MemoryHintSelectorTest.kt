@@ -34,9 +34,19 @@ class MemoryHintSelectorTest {
         assertNotNull(second)
         assertNotEquals(first, second)
         val allShown = MemoryHintSelector.candidates(cards, emptySet()).toSet()
-        assertNull(MemoryHintSelector.choose(cards, emptySet(), Random(7),
-            previouslyShown = allShown))
+        assertTrue(MemoryHintSelector.choose(cards, emptySet(), Random(7),
+            previouslyShown = allShown) in allShown)
         assertEquals(listOf(0, 1, 2, 0, 1, 2), cards)
+    }
+
+    @Test fun lastUnmatchedPairCanBeRevealedAgainWhenNoFreshPairExists() {
+        val cards = listOf(0, 1, 0, 1)
+        val opened = setOf(0, 2)
+        val remaining = 1 to 3
+        assertEquals(remaining, MemoryHintSelector.choose(cards, opened,
+            Random(5), previouslyShown = setOf(remaining)))
+        assertNull(MemoryHintSelector.choose(cards, setOf(0, 1, 2, 3),
+            Random(5), previouslyShown = setOf(remaining)))
     }
 
     @Test fun completedBoardHasNoHint() {

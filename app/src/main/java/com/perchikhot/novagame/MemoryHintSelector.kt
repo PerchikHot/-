@@ -21,7 +21,12 @@ internal object MemoryHintSelector {
                previouslyShown: Set<Pair<Int, Int>> = emptySet()): Pair<Int, Int>? {
         // A hint consumes one of only two chances. Do not reveal the same
         // unmatched pair twice when the player has not solved it yet.
-        val fresh = candidates(values, opened).filter { it !in previouslyShown }
-        return if (fresh.isEmpty()) null else fresh.random(random)
+        val available = candidates(values, opened)
+        if (available.isEmpty()) return null
+        val fresh = available.filter { it !in previouslyShown }
+        // When only a previously revealed pair remains, allow the second
+        // hint instead of silently doing nothing. This matches Windows.
+        // Prefer an unseen pair whenever one exists.
+        return (fresh.ifEmpty { available }).random(random)
     }
 }
