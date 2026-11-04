@@ -15,6 +15,15 @@ class GalleryActivity : Activity() {
     private var visibleCount=24
     private var savedVisibleCount=50
     private var fullscreenOpen=false
+    private var favoritesOnly=false
+    private val favoritePrefs by lazy { getSharedPreferences("gallery_favorites", MODE_PRIVATE) }
+    private fun isFavorite(key:String):Boolean = favoritePrefs.getBoolean(key,false)
+    private fun toggleFavorite(key:String) {
+        favoritePrefs.edit().putBoolean(key,!isFavorite(key)).apply()
+        draw()
+    }
+    private fun fileKey(file:java.io.File):String = "file:${file.absolutePath}"
+    private fun uriKey(uri:Uri):String = "uri:$uri"
     private val groupPrefs by lazy {getSharedPreferences("image_groups",MODE_PRIVATE)}
     private fun groupOf(name:String)=groupPrefs.getString(name,name.substringBeforeLast(".")) ?: name
 
@@ -61,19 +70,24 @@ class GalleryActivity : Activity() {
         list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(18,20,18,20) }
         scroll.addView(list);setContentView(scroll)
         val local=ImageLibrary.imported(this)
-        val savedItems=saved()
+        val savedItems=saved().filter { !favoritesOnly || isFavorite(uriKey(Uri.parse(it))) }
+        val filteredLocal=local.filter { !favoritesOnly || isFavorite(fileKey(it)) }
+        list.addView(Button(this).apply {
+            text=if(favoritesOnly) "★ Избранное — показать все" else "☆ Только избранное"
+            setOnClickListener { favoritesOnly=!favoritesOnly;draw() }
+        })
         val savedHeading=TextView(this).apply {
             text="С ТЕЛЕФОНА • ${savedItems.size} изображений"
             textSize=19f;setTextColor(Color.WHITE);setPadding(0,16,0,12)
         }
-        val heading=TextView(this).apply { text="Галерея • ${savedItems.size+local.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
+        val heading=TextView(this).apply { text="Галерея • ${savedItems.size+filteredLocal.size} изображений";textSize=24f;setTextColor(Color.WHITE) }
         list.addView(heading)
-        if (local.isNotEmpty() || savedItems.isNotEmpty()) {
+        if (filteredLocal.isNotEmpty() || savedItems.isNotEmpty()) {
             list.addView(Button(this).apply {
                 text="🎲 Случайное изображение"
                 setOnClickListener {
                     // Both imported and user-selected photos can appear here.
-                    val candidates=local.map { Uri.fromFile(it) } + savedItems.map { Uri.parse(it) }
+                    val candidates=filteredLocal.map { Uri.fromFile(it) } + savedItems.map { Uri.parse(it) }
                     // Persisted URIs may become unavailable after a file is moved.
                     // Try other images instead of failing on the first random pick.
                     val bitmap=candidates.shuffled().asSequence()
@@ -102,10 +116,10 @@ class GalleryActivity : Activity() {
             text="↓ К изображениям с телефона (${savedItems.size})"
             setOnClickListener { savedHeading.post { scroll.smoothScrollTo(0,savedHeading.top) } }
         })
-        if(local.isNotEmpty()) {
-            val groups=local.groupBy {groupOf(it.name)}.toSortedMap()
+        if(filteredLocal.isNotEmpty()) {
+            val groups=filteredLocal.groupBy {groupOf(it.name)}.toSortedMap()
             list.addView(TextView(this).apply {
-                text="ПЕРСОНАЖИ • ${groups.size} героинь / ${local.size} изображений"
+                text="ПЕРСОНАЖИ • ${groups.size} героинь / ${filteredLocal.size} изображений"
                 textSize=19f;setTextColor(Color.WHITE);setPadding(0,16,0,12)
             })
             groups.entries.take(visibleCount).forEach { (name,photos) ->
@@ -144,6 +158,10 @@ class GalleryActivity : Activity() {
                         }
                     }
                     gallery.addView(photo,LinearLayout.LayoutParams(-1,260))
+                    gallery.addView(Button(this).apply {
+                        text=if(isFavorite(fileKey(file))) "★ Убрать из избранного" else "☆ В избранное"
+                        setOnClickListener { toggleFavorite(fileKey(file)) }
+                    })
                     gallery.addView(Button(this).apply {
                         text="Переместить изображение"
                         setOnClickListener {
@@ -223,6 +241,11 @@ class GalleryActivity : Activity() {
                 }
             }
             row.addView(image)
+            row.addView(Button(this).apply {
+                text=if(isFavorite(uriKey(uri))) "★" else "☆"
+                contentDescription=if(isFavorite(uriKey(uri))) "Убрать из избранного" else "В избранное"
+                setOnClickListener { toggleFavorite(uriKey(uri)) }
+            })
             row.addView(Button(this).apply {text="Удалить #${index+1}";setOnClickListener {val items=saved();items.remove(value);save(items);draw()} })
             list.addView(row)
         }
