@@ -23,6 +23,7 @@ from memory_stats import (default_stats_path, load_memory_stats, record_memory_w
     save_memory_stats, daily_challenge_seed, load_daily_challenge,
     record_daily_challenge_win, load_best_score, updated_best_score, save_best_score)
 from memory_session import load_session, save_session, clear_session
+from gallery_favorites import favorites_file, load_favorites, save_favorites, favorite_key
 
 BACKGROUND = "#0C0A22"
 PANEL = "#271A49"
@@ -529,6 +530,9 @@ class NovaDesktop(tk.Tk):
         self.visible_gallery_indices: list[int] = []
         self._seen_random_indices: set[int] = set()
         self.gallery_filter = tk.StringVar()
+        self.favorites_path = favorites_file()
+        self.favorites = load_favorites(self.favorites_path)
+        self.favorites_only = False
         self.gallery_photo = None
         self._previewed_path: Path | None = None
         self._pending_hide = None
@@ -1026,6 +1030,10 @@ class NovaDesktop(tk.Tk):
         self._button(toolbar, "Выбрать папку", self._choose_folder).pack(side="left", padx=4)
         self._button(toolbar, "Обновить список", self._reload_folder).pack(side="left", padx=4)
         self._button(toolbar, "Случайное без повторов", self._random_image).pack(side="left", padx=4)
+        self.favorite_button = self._button(toolbar, "☆ В избранное", self._toggle_favorite)
+        self.favorite_button.pack(side="left", padx=3)
+        self.favorites_filter_button = self._button(toolbar, "☆ Все", self._toggle_favorites_filter)
+        self.favorites_filter_button.pack(side="left", padx=3)
         self.slideshow_button = self._button(toolbar, "▶ Слайд-шоу", self._toggle_slideshow)
         self.slideshow_button.pack(side="left", padx=4)
         self.slideshow_speed_button = self._button(toolbar, "5с", self._cycle_slideshow_speed)
@@ -1094,6 +1102,34 @@ class NovaDesktop(tk.Tk):
         self.gallery_files = updated
         self._refresh_gallery()
 
+    def _toggle_favorites_filter(self):
+        self.favorites_only = not self.favorites_only
+        self.favorites_filter_button.config(text="★ Избранные" if self.favorites_only else "☆ Все")
+        self._refresh_gallery()
+
+    def _toggle_favorite(self):
+        selection = self.gallery_list.curselection()
+        if selection and selection[0] < len(self.visible_gallery_indices):
+            path = self.gallery_files[self.visible_gallery_indices[selection[0]]]
+        else:
+            path = self._previewed_path
+        if path is None or path not in self.gallery_files:
+            self.gallery_status.config(text="Выбери изображение для избранного")
+            return
+        key = favorite_key(path)
+        updated = set(self.favorites)
+        if key in updated:
+            updated.remove(key)
+        else:
+            updated.add(key)
+        try:
+            save_favorites(self.favorites_path, updated)
+        except OSError as exc:
+            messagebox.showerror("Избранное", f"Не удалось сохранить: {exc}")
+            return
+        self.favorites = updated
+        self._refresh_gallery()
+
     def _refresh_gallery(self):
         if not hasattr(self, "gallery_list"):
             return
@@ -1103,6 +1139,7 @@ class NovaDesktop(tk.Tk):
         self.visible_gallery_indices = [
             index for index, path in enumerate(self.gallery_files)
             if gallery_matches_query(path, self.gallery_filter.get(), self.gallery_root)
+            and (not self.favorites_only or favorite_key(path) in self.favorites)
         ]
         if not self.visible_gallery_indices and self.slideshow_enabled:
             self._stop_slideshow()
@@ -1115,14 +1152,15 @@ class NovaDesktop(tk.Tk):
             self.gallery_preview.config(image="", text="Выбери изображение из списка")
         for index in self.visible_gallery_indices:
             path = self.gallery_files[index]
-            self.gallery_list.insert(tk.END, str(path.relative_to(self.gallery_root)) if self.gallery_root else path.name)
+            name = str(path.relative_to(self.gallery_root)) if self.gallery_root else path.name
+            self.gallery_list.insert(tk.END, ("★ " if favorite_key(path) in self.favorites else "  ") + name)
         # Keep Next/Previous anchored to the same image after a rescan.
         selected = gallery_preview_index(self._previewed_path, visible_paths)
         if selected is not None:
             self.gallery_list.selection_set(selected)
             self.gallery_list.see(selected)
         self.gallery_status.config(
-            text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)}"
+            text=f"Показано: {len(self.visible_gallery_indices)} / {len(self.gallery_files)} · ★ {sum(favorite_key(p) in self.favorites for p in self.gallery_files)}"
         )
 
     def _copy_gallery_filename(self):
