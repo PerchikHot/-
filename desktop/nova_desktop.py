@@ -549,6 +549,8 @@ class NovaDesktop(tk.Tk):
         self.reaction_job = None
         self.reaction_best_path = self.stats_path.with_name('reaction_best.json')
         self.reaction_best = self._load_reaction_best()
+        self.reaction_paused = False
+        self.reaction_pause_started = 0.0
         self.reaction_mode = tk.StringVar(value="Классика")
         self.reaction_combo = 0
         self.reaction_max_combo = 0
@@ -667,8 +669,38 @@ class NovaDesktop(tk.Tk):
             except OSError:
                 pass
 
+    def _toggle_reaction_pause(self, event=None):
+        """Pause the clock and moving target without losing the current round."""
+        if not self.reaction_running or self.current_page != "reaction":
+            return
+        now = time.monotonic()
+        if self.reaction_paused:
+            elapsed = now - self.reaction_pause_started
+            self.reaction_deadline += elapsed
+            self.reaction_started_at += elapsed
+            self.reaction_last_move = now
+            self.reaction_paused = False
+            self.reaction_canvas.delete("pause_overlay")
+        else:
+            self.reaction_paused = True
+            self.reaction_pause_started = now
+            self.reaction_canvas.create_rectangle(
+                0, 0, self.reaction_canvas.winfo_width(),
+                self.reaction_canvas.winfo_height(), fill="#170E35",
+                stipple="gray50", outline="", tags="pause_overlay")
+            self.reaction_canvas.create_text(
+                self.reaction_canvas.winfo_width() // 2,
+                self.reaction_canvas.winfo_height() // 2,
+                text="ПАУЗА\\nНажмите P или кнопку",
+                fill=TEXT, font=("Segoe UI", 20, "bold"),
+                tags="pause_overlay")
+        self.reaction_pause_button.config(
+            text="Продолжить (P)" if self.reaction_paused else "Пауза (P)")
+        self._reaction_render_status()
+
     def _stop_reaction(self):
         self.reaction_running = False
+        self.reaction_paused = False
         if self.reaction_job is not None:
             try:
                 self.after_cancel(self.reaction_job)
@@ -691,11 +723,19 @@ class NovaDesktop(tk.Tk):
                 font=("Segoe UI", 11)).pack(side="left", padx=12)
         self.reaction_status = self._label(self.content, "", 14)
         self.reaction_status.pack(pady=6)
-        self._button(self.content, "Начать новый раунд", self._start_reaction).pack(pady=8)
+        controls = tk.Frame(self.content, bg=BACKGROUND)
+        controls.pack(pady=8)
+        self._button(controls, "Начать новый раунд", self._start_reaction).pack(side="left", padx=6)
+        self.reaction_pause_button = self._button(controls, "Пауза (P)",
+                                                  self._toggle_reaction_pause)
+        self.reaction_pause_button.pack(side="left", padx=6)
         self.reaction_canvas = tk.Canvas(self.content, bg="#170E35",
             highlightthickness=2, highlightbackground=ACCENT, height=360)
         self.reaction_canvas.pack(fill="both", expand=True, padx=16, pady=12)
         self.reaction_canvas.bind("<Button-1>", self._reaction_click)
+        self.reaction_canvas.bind("<KeyPress-p>", self._toggle_reaction_pause)
+        self.reaction_canvas.bind("<KeyPress-P>", self._toggle_reaction_pause)
+        self.reaction_canvas.configure(takefocus=1)
         self._reaction_render_status()
 
     def _reaction_mode_changed(self):
@@ -706,13 +746,15 @@ class NovaDesktop(tk.Tk):
         self.reaction_misses = 0
         self.reaction_combo = 0
         self.reaction_points = 0
+        self.reaction_pause_button.config(text="Пауза (P)")
         self._reaction_render_status(30)
 
     def _reaction_render_status(self, remaining=None):
         if self.current_page != "reaction":
             return
         if remaining is None:
-            remaining = max(0, math.ceil(self.reaction_deadline - time.monotonic())) if self.reaction_running else 30
+            clock = self.reaction_pause_started if self.reaction_paused else time.monotonic()
+            remaining = max(0, math.ceil(self.reaction_deadline - clock)) if self.reaction_running else 30
         self.reaction_status.config(text=(
             f"Время: {remaining}с   •   Попадания: {self.reaction_score}   •   "
             f"Промахи: {self.reaction_misses}   •   Комбо: x{self.reaction_combo}   •   "
@@ -726,6 +768,9 @@ class NovaDesktop(tk.Tk):
         self.reaction_max_combo = 0
         self.reaction_points = 0
         self.reaction_running = True
+        self.reaction_paused = False
+        self.reaction_pause_button.config(text="Пауза (P)")
+        self.reaction_canvas.focus_set()
         self.reaction_started_at = time.monotonic()
         self.reaction_last_move = self.reaction_started_at
         self.reaction_deadline = self.reaction_started_at + 30.0
@@ -779,7 +824,7 @@ class NovaDesktop(tk.Tk):
         self.reaction_velocity = (vx, vy)
 
     def _reaction_click(self, event):
-        if not self.reaction_running or time.monotonic() >= self.reaction_deadline:
+        if not self.reaction_running or self.reaction_paused or time.monotonic() >= self.reaction_deadline:
             return
         x, y, radius = self.reaction_target
         if (event.x-x)**2 + (event.y-y)**2 <= radius**2:
@@ -798,7 +843,12 @@ class NovaDesktop(tk.Tk):
         self.reaction_job = None
         if not self.reaction_running or self.current_page != "reaction":
             return
-        remaining = max(0, math.ceil(self.reaction_deadline - time.monotonic()))
+        clock = self.reaction_pause_started if self.reaction_paused else time.monotonic()
+        remaining = max(0, math.ceil(self.reaction_deadline - clock))
+        if self.reaction_paused:
+            self._reaction_render_status(remaining)
+            self.reaction_job = self.after(100, self._reaction_tick)
+            return
         if remaining == 0:
             self.reaction_running = False
             self.reaction_canvas.delete("target")
