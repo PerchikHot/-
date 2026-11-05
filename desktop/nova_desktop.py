@@ -549,6 +549,7 @@ class NovaDesktop(tk.Tk):
         self.reaction_job = None
         self.reaction_best_path = self.stats_path.with_name('reaction_best.json')
         self.reaction_best = self._load_reaction_best()
+        self.reaction_records = self._load_reaction_records()
         self.reaction_paused = False
         self.reaction_pause_started = 0.0
         self.reaction_mode = tk.StringVar(value="Классика")
@@ -656,12 +657,27 @@ class NovaDesktop(tk.Tk):
         except (OSError, ValueError, AttributeError, TypeError):
             return 0
 
+    def _load_reaction_records(self):
+        """Load separate best scores, keeping compatibility with old saves."""
+        try:
+            payload = json.loads(self.reaction_best_path.read_text(encoding="utf-8"))
+            records = payload.get("mode_records", {})
+            if not isinstance(records, dict):
+                return {}
+            return {mode: value for mode, value in records.items()
+                    if mode in ("Классика", "Комета", "Шторм")
+                    and type(value) is int and 0 <= value <= 1000000}
+        except (OSError, ValueError, AttributeError, TypeError):
+            return {}
+
     def _save_reaction_best(self):
         """Replace the record atomically; never touch memory-game saves."""
         temp = self.reaction_best_path.with_suffix(".tmp")
         try:
             self.reaction_best_path.parent.mkdir(parents=True, exist_ok=True)
-            temp.write_text(json.dumps({"best": self.reaction_best}), encoding="utf-8")
+            temp.write_text(json.dumps(
+                {"best": self.reaction_best, "mode_records": self.reaction_records},
+                ensure_ascii=False), encoding="utf-8")
             os.replace(temp, self.reaction_best_path)
         except OSError:
             try:
@@ -758,7 +774,8 @@ class NovaDesktop(tk.Tk):
         self.reaction_status.config(text=(
             f"Время: {remaining}с   •   Попадания: {self.reaction_score}   •   "
             f"Промахи: {self.reaction_misses}   •   Комбо: x{self.reaction_combo}   •   "
-            f"Очки: {self.reaction_points}   •   Рекорд классики: {self.reaction_best}"))
+            f"Очки: {self.reaction_points}   •   Рекорд режима: "
+            f"{self.reaction_records.get(self.reaction_mode.get(), 0)}"))
 
     def _start_reaction(self):
         self._stop_reaction()
@@ -856,6 +873,10 @@ class NovaDesktop(tk.Tk):
             if (self.reaction_mode.get() == "Классика"
                     and self.reaction_score > self.reaction_best):
                 self.reaction_best = self.reaction_score
+                self._save_reaction_best()
+            mode = self.reaction_mode.get()
+            if self.reaction_points > self.reaction_records.get(mode, 0):
+                self.reaction_records[mode] = self.reaction_points
                 self._save_reaction_best()
             self._reaction_render_status(0)
             self.reaction_canvas.create_text(
