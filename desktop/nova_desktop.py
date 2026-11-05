@@ -6,6 +6,7 @@ User images are read on demand and never uploaded or modified.
 from __future__ import annotations
 
 import random
+import json
 import math
 import time
 import os
@@ -540,6 +541,14 @@ class NovaDesktop(tk.Tk):
         self._slideshow_job = None
         self.slideshow_enabled = False
         self.slideshow_delay_ms = 5000
+        self.reaction_running = False
+        self.reaction_deadline = 0.0
+        self.reaction_score = 0
+        self.reaction_misses = 0
+        self.reaction_target = None
+        self.reaction_job = None
+        self.reaction_best_path = self.stats_path.with_name('reaction_best.json')
+        self.reaction_best = self._load_reaction_best()
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
         # Minimized Windows windows must not silently consume a timed round.
@@ -598,6 +607,7 @@ class NovaDesktop(tk.Tk):
         tabs.pack(fill="x", padx=24)
         self._button(tabs, "Игра на память", lambda: self._show("memory")).pack(side="left", padx=4)
         self._button(tabs, "Моя галерея", lambda: self._show("gallery")).pack(side="left", padx=4)
+        self._button(tabs, "☄ Реакция", lambda: self._show("reaction")).pack(side="left", padx=4)
         self._button(tabs, "☄ Вызов дня", self._start_daily_today).pack(side="left", padx=4)
         self.content = tk.Frame(self, bg=BACKGROUND)
         self.content.pack(fill="both", expand=True, padx=24, pady=12)
@@ -606,6 +616,7 @@ class NovaDesktop(tk.Tk):
     def _show(self, page: str):
         # Cancel the timer before destroying the gallery widgets.
         self._stop_slideshow()
+        self._stop_reaction()
         self.current_page = page
         # A delayed flip must never update widgets after switching tabs.
         if self._pending_hide is not None:
@@ -621,8 +632,124 @@ class NovaDesktop(tk.Tk):
             child.destroy()
         if page == "memory":
             self._memory_page()
+        elif page == "reaction":
+            self._reaction_page()
         else:
             self._gallery_page()
+
+
+    def _load_reaction_best(self):
+        """Local-only record. A malformed or old file never blocks startup."""
+        try:
+            payload = json.loads(self.reaction_best_path.read_text(encoding="utf-8"))
+            value = payload.get("best", 0)
+            return value if type(value) is int and 0 <= value <= 10000 else 0
+        except (OSError, ValueError, AttributeError, TypeError):
+            return 0
+
+    def _save_reaction_best(self):
+        """Replace the record atomically; never touch memory-game saves."""
+        temp = self.reaction_best_path.with_suffix(".tmp")
+        try:
+            self.reaction_best_path.parent.mkdir(parents=True, exist_ok=True)
+            temp.write_text(json.dumps({"best": self.reaction_best}), encoding="utf-8")
+            os.replace(temp, self.reaction_best_path)
+        except OSError:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _stop_reaction(self):
+        self.reaction_running = False
+        if self.reaction_job is not None:
+            try:
+                self.after_cancel(self.reaction_job)
+            except (ValueError, tk.TclError):
+                pass
+            self.reaction_job = None
+
+    def _reaction_page(self):
+        """Playable 30-second target challenge, with a persistent local record."""
+        self._label(self.content, "☄ КОСМИЧЕСКАЯ РЕАКЦИЯ", 22).pack(pady=(8, 6))
+        self._label(self.content, "Попадай по движущейся звезде за 30 секунд. "
+                    "Промахи не приносят очков.", 12).pack(pady=(0, 8))
+        self.reaction_status = self._label(self.content, "", 14)
+        self.reaction_status.pack(pady=6)
+        self._button(self.content, "Начать новый раунд", self._start_reaction).pack(pady=8)
+        self.reaction_canvas = tk.Canvas(self.content, bg="#170E35",
+            highlightthickness=2, highlightbackground=ACCENT, height=360)
+        self.reaction_canvas.pack(fill="both", expand=True, padx=16, pady=12)
+        self.reaction_canvas.bind("<Button-1>", self._reaction_click)
+        self._reaction_render_status()
+
+    def _reaction_render_status(self, remaining=None):
+        if self.current_page != "reaction":
+            return
+        if remaining is None:
+            remaining = max(0, math.ceil(self.reaction_deadline - time.monotonic())) if self.reaction_running else 30
+        self.reaction_status.config(text=(
+            f"Время: {remaining}с   •   Попадания: {self.reaction_score}   •   "
+            f"Промахи: {self.reaction_misses}   •   Рекорд: {self.reaction_best}"))
+
+    def _start_reaction(self):
+        self._stop_reaction()
+        self.reaction_score = 0
+        self.reaction_misses = 0
+        self.reaction_running = True
+        self.reaction_deadline = time.monotonic() + 30.0
+        self._reaction_spawn()
+        self._reaction_tick()
+
+    def _reaction_spawn(self):
+        canvas = self.reaction_canvas
+        canvas.update_idletasks()
+        width = max(160, canvas.winfo_width())
+        height = max(160, canvas.winfo_height())
+        radius = max(18, 32 - self.reaction_score // 5)
+        x = random.randint(radius + 8, max(radius + 8, width - radius - 8))
+        y = random.randint(radius + 8, max(radius + 8, height - radius - 8))
+        canvas.delete("target")
+        canvas.create_oval(x-radius, y-radius, x+radius, y+radius,
+                           fill="#D3A5FF", outline="#FFFFFF", width=3,
+                           tags="target")
+        canvas.create_text(x, y, text="✦", fill="#251145",
+                           font=("Segoe UI Symbol", max(15, radius)),
+                           tags="target")
+        self.reaction_target = (x, y, radius)
+
+    def _reaction_click(self, event):
+        if not self.reaction_running or time.monotonic() >= self.reaction_deadline:
+            return
+        x, y, radius = self.reaction_target
+        if (event.x-x)**2 + (event.y-y)**2 <= radius**2:
+            self.reaction_score += 1
+            self._reaction_spawn()
+        else:
+            self.reaction_misses += 1
+        self._reaction_render_status()
+
+    def _reaction_tick(self):
+        self.reaction_job = None
+        if not self.reaction_running or self.current_page != "reaction":
+            return
+        remaining = max(0, math.ceil(self.reaction_deadline - time.monotonic()))
+        if remaining == 0:
+            self.reaction_running = False
+            self.reaction_canvas.delete("target")
+            self.reaction_target = None
+            if self.reaction_score > self.reaction_best:
+                self.reaction_best = self.reaction_score
+                self._save_reaction_best()
+            self._reaction_render_status(0)
+            self.reaction_canvas.create_text(
+                max(120, self.reaction_canvas.winfo_width() // 2),
+                max(80, self.reaction_canvas.winfo_height() // 2),
+                text=f"РАУНД ЗАВЕРШЁН\\n{self.reaction_score} попаданий",
+                fill=TEXT, font=("Segoe UI", 23, "bold"))
+            return
+        self._reaction_render_status(remaining)
+        self.reaction_job = self.after(100, self._reaction_tick)
 
     def _memory_page(self):
         top = tk.Frame(self.content, bg=BACKGROUND)
