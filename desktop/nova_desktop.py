@@ -549,6 +549,13 @@ class NovaDesktop(tk.Tk):
         self.reaction_job = None
         self.reaction_best_path = self.stats_path.with_name('reaction_best.json')
         self.reaction_best = self._load_reaction_best()
+        self.reaction_mode = tk.StringVar(value="Классика")
+        self.reaction_combo = 0
+        self.reaction_max_combo = 0
+        self.reaction_points = 0
+        self.reaction_started_at = 0.0
+        self.reaction_last_move = 0.0
+        self.reaction_velocity = (0.0, 0.0)
         self._build()
         self.bind("<KeyPress>", self._handle_memory_key)
         # Minimized Windows windows must not silently consume a timed round.
@@ -672,8 +679,16 @@ class NovaDesktop(tk.Tk):
     def _reaction_page(self):
         """Playable 30-second target challenge, with a persistent local record."""
         self._label(self.content, "☄ КОСМИЧЕСКАЯ РЕАКЦИЯ", 22).pack(pady=(8, 6))
-        self._label(self.content, "Попадай по движущейся звезде за 30 секунд. "
-                    "Промахи не приносят очков.", 12).pack(pady=(0, 8))
+        self._label(self.content, "Три режима: классика, движущаяся комета и "
+                    "ускоряющийся шторм. Комбо увеличивает очки.", 12).pack(pady=(0, 8))
+        modes = tk.Frame(self.content, bg=BACKGROUND)
+        modes.pack(pady=5)
+        for name in ("Классика", "Комета", "Шторм"):
+            tk.Radiobutton(modes, text=name, variable=self.reaction_mode,
+                value=name, command=self._reaction_mode_changed,
+                bg=BACKGROUND, fg=TEXT, selectcolor=PANEL,
+                activebackground=BACKGROUND, activeforeground=ACCENT,
+                font=("Segoe UI", 11)).pack(side="left", padx=12)
         self.reaction_status = self._label(self.content, "", 14)
         self.reaction_status.pack(pady=6)
         self._button(self.content, "Начать новый раунд", self._start_reaction).pack(pady=8)
@@ -683,6 +698,16 @@ class NovaDesktop(tk.Tk):
         self.reaction_canvas.bind("<Button-1>", self._reaction_click)
         self._reaction_render_status()
 
+    def _reaction_mode_changed(self):
+        self._stop_reaction()
+        self.reaction_canvas.delete("all")
+        self.reaction_target = None
+        self.reaction_score = 0
+        self.reaction_misses = 0
+        self.reaction_combo = 0
+        self.reaction_points = 0
+        self._reaction_render_status(30)
+
     def _reaction_render_status(self, remaining=None):
         if self.current_page != "reaction":
             return
@@ -690,14 +715,20 @@ class NovaDesktop(tk.Tk):
             remaining = max(0, math.ceil(self.reaction_deadline - time.monotonic())) if self.reaction_running else 30
         self.reaction_status.config(text=(
             f"Время: {remaining}с   •   Попадания: {self.reaction_score}   •   "
-            f"Промахи: {self.reaction_misses}   •   Рекорд: {self.reaction_best}"))
+            f"Промахи: {self.reaction_misses}   •   Комбо: x{self.reaction_combo}   •   "
+            f"Очки: {self.reaction_points}   •   Рекорд классики: {self.reaction_best}"))
 
     def _start_reaction(self):
         self._stop_reaction()
         self.reaction_score = 0
         self.reaction_misses = 0
+        self.reaction_combo = 0
+        self.reaction_max_combo = 0
+        self.reaction_points = 0
         self.reaction_running = True
-        self.reaction_deadline = time.monotonic() + 30.0
+        self.reaction_started_at = time.monotonic()
+        self.reaction_last_move = self.reaction_started_at
+        self.reaction_deadline = self.reaction_started_at + 30.0
         self._reaction_spawn()
         self._reaction_tick()
 
@@ -716,7 +747,36 @@ class NovaDesktop(tk.Tk):
         canvas.create_text(x, y, text="✦", fill="#251145",
                            font=("Segoe UI Symbol", max(15, radius)),
                            tags="target")
-        self.reaction_target = (x, y, radius)
+        self.reaction_target = (float(x), float(y), radius)
+        speed = 90 + min(240, self.reaction_score * 8)
+        angle = random.uniform(0, math.tau)
+        self.reaction_velocity = (math.cos(angle) * speed,
+                                  math.sin(angle) * speed)
+        self.reaction_last_move = time.monotonic()
+
+    def _reaction_animate(self, now):
+        """Move the target with wall reflection; no background threads."""
+        if self.reaction_target is None or self.reaction_mode.get() == "Классика":
+            return
+        dt = min(0.1, max(0.0, now - self.reaction_last_move))
+        self.reaction_last_move = now
+        x, y, radius = self.reaction_target
+        vx, vy = self.reaction_velocity
+        factor = (1.0 + min(1.5, (now-self.reaction_started_at)/20.0)
+                  if self.reaction_mode.get() == "Шторм" else 1.0)
+        width = max(160, self.reaction_canvas.winfo_width())
+        height = max(160, self.reaction_canvas.winfo_height())
+        nx, ny = x + vx * dt * factor, y + vy * dt * factor
+        low = radius + 6
+        if nx < low or nx > width - low:
+            vx = -vx
+            nx = min(max(nx, low), max(low, width - low))
+        if ny < low or ny > height - low:
+            vy = -vy
+            ny = min(max(ny, low), max(low, height - low))
+        self.reaction_canvas.move("target", nx-x, ny-y)
+        self.reaction_target = (nx, ny, radius)
+        self.reaction_velocity = (vx, vy)
 
     def _reaction_click(self, event):
         if not self.reaction_running or time.monotonic() >= self.reaction_deadline:
@@ -724,9 +784,14 @@ class NovaDesktop(tk.Tk):
         x, y, radius = self.reaction_target
         if (event.x-x)**2 + (event.y-y)**2 <= radius**2:
             self.reaction_score += 1
+            self.reaction_combo += 1
+            self.reaction_max_combo = max(self.reaction_combo,
+                                           self.reaction_max_combo)
+            self.reaction_points += 100 * min(5, self.reaction_combo)
             self._reaction_spawn()
         else:
             self.reaction_misses += 1
+            self.reaction_combo = 0
         self._reaction_render_status()
 
     def _reaction_tick(self):
@@ -738,18 +803,22 @@ class NovaDesktop(tk.Tk):
             self.reaction_running = False
             self.reaction_canvas.delete("target")
             self.reaction_target = None
-            if self.reaction_score > self.reaction_best:
+            if (self.reaction_mode.get() == "Классика"
+                    and self.reaction_score > self.reaction_best):
                 self.reaction_best = self.reaction_score
                 self._save_reaction_best()
             self._reaction_render_status(0)
             self.reaction_canvas.create_text(
                 max(120, self.reaction_canvas.winfo_width() // 2),
                 max(80, self.reaction_canvas.winfo_height() // 2),
-                text=f"РАУНД ЗАВЕРШЁН\\n{self.reaction_score} попаданий",
+                text=(f"РАУНД ЗАВЕРШЁН\\n{self.reaction_mode.get()}\\n"
+                      f"{self.reaction_score} попаданий · {self.reaction_points} очков\\n"
+                      f"Лучшее комбо: x{self.reaction_max_combo}"),
                 fill=TEXT, font=("Segoe UI", 23, "bold"))
             return
+        self._reaction_animate(time.monotonic())
         self._reaction_render_status(remaining)
-        self.reaction_job = self.after(100, self._reaction_tick)
+        self.reaction_job = self.after(33, self._reaction_tick)
 
     def _memory_page(self):
         top = tk.Frame(self.content, bg=BACKGROUND)
